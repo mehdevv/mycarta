@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { scanResultVariants, vibrate } from "@/lib/motion";
 import { extractQrToken } from "@/lib/supabase";
 import { FRAUD_REASON_LABELS } from "@/api/fraud";
-import { CheckCircle, XCircle, Gift, ArrowLeft, Minus, Plus, ScanLine } from "lucide-react";
+import { CheckCircle, XCircle, Gift, ArrowLeft, Minus, Plus, ScanLine, CalendarClock } from "lucide-react";
 import { useLocation } from "wouter";
 
 type ScanResult = {
@@ -30,6 +30,7 @@ type ScanResult = {
   products?: { id: string; name: string; price: number; category: string }[];
   pendingScanId?: string | null;
   clientName?: string | null;
+  maxScansPerDay?: number;
 };
 
 type ProductQty = Record<string, number>;
@@ -49,6 +50,7 @@ function normalizeScanResult(raw: Record<string, unknown>): ScanResult {
       : [],
     pendingScanId: (raw.pendingScanId ?? raw.pending_scan_id) as string | null | undefined,
     clientName: (raw.clientName ?? raw.client_name) as string | null | undefined,
+    maxScansPerDay: Number(raw.maxScansPerDay ?? raw.max_scans_per_day ?? 0) || undefined,
   };
 }
 
@@ -278,11 +280,15 @@ export default function WorkerScan() {
   if (step === "result" && result) {
     const isReward = result.rewardTriggered;
     const isApproved = result.approved;
+    const isDailyLimit = !isApproved && result.reason === "daily_limit";
     const bgClass = isReward
       ? "bg-amber-500"
       : isApproved
         ? "bg-[#0E9F6E]"
-        : "bg-destructive";
+        : isDailyLimit
+          ? "bg-orange-600"
+          : "bg-destructive";
+    const dailyMax = result.maxScansPerDay ?? 2;
 
     return (
       <AnimatePresence>
@@ -306,6 +312,20 @@ export default function WorkerScan() {
               <p className="text-xl">{result.clientName}</p>
               <p className="mt-4 text-lg font-semibold">
                 {result.currentStamps} / {result.stampThreshold} stamps
+              </p>
+            </>
+          ) : isDailyLimit ? (
+            <>
+              <CalendarClock className="h-20 w-20 mb-4" />
+              <p className="text-3xl font-bold mb-2">Max Daily Limit Reached</p>
+              <p className="text-xl font-semibold">{result.clientName}</p>
+              <p className="mt-4 text-lg font-medium px-4 max-w-sm">
+                This customer has already reached the maximum of{" "}
+                <span className="font-bold">{dailyMax}</span>{" "}
+                {dailyMax === 1 ? "order" : "orders"} for today.
+              </p>
+              <p className="mt-3 text-sm opacity-90 px-4">
+                They can scan again tomorrow. No stamp was added.
               </p>
             </>
           ) : (

@@ -29,7 +29,7 @@ function extractToken(raw: string): string {
 function blockedResponse(
   reason: string,
   client: { id: string; full_name: string; current_cycle_stamps: number },
-  settings: { stamp_threshold?: number } | null,
+  settings: { stamp_threshold?: number; max_scans_per_day?: number } | null,
   clientName?: string,
 ) {
   return {
@@ -38,6 +38,7 @@ function blockedResponse(
     stampsAdded: 0,
     currentStamps: client.current_cycle_stamps,
     stampThreshold: settings?.stamp_threshold ?? 9,
+    maxScansPerDay: settings?.max_scans_per_day ?? 2,
     rewardTriggered: false,
     needsProducts: false,
     clientName: clientName ?? client.full_name,

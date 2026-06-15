@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 
 export const FRAUD_REASON_LABELS: Record<string, string> = {
   blocked: "Customer card is blocked",
-  daily_limit: "Daily scan limit reached",
+  daily_limit: "Maximum daily order limit reached",
   too_soon: "Same employee scanned too recently",
   rapid_scan: "Customer scanned again within 60 seconds",
   self_scan: "Employee cannot scan their own card",
