@@ -65,6 +65,10 @@ export default function WorkerScan() {
   const html5QrcodeRef = useRef<InstanceType<typeof import("html5-qrcode").Html5Qrcode> | null>(null);
   const processingRef = useRef(false);
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mutateScanRef = useRef(purchaseScan.mutateAsync);
+  const toastRef = useRef(toast);
+  mutateScanRef.current = purchaseScan.mutateAsync;
+  toastRef.current = toast;
 
   const stopScanner = useCallback(async () => {
     const scanner = html5QrcodeRef.current;
@@ -114,10 +118,10 @@ export default function WorkerScan() {
 
     const startCamera = async () => {
       setCameraStarting(true);
-      await stopScanner();
-      if (cancelled) return;
-
       try {
+        await stopScanner();
+        if (cancelled) return;
+
         const { Html5Qrcode } = await import("html5-qrcode");
         if (cancelled || !document.getElementById(SCANNER_ELEMENT_ID)) return;
 
@@ -134,7 +138,7 @@ export default function WorkerScan() {
             try {
               await stopScanner();
 
-              const scanResult = await purchaseScan.mutateAsync({
+              const scanResult = await mutateScanRef.current({
                 data: { clientQrToken: extractQrToken(decodedText) },
               });
               const r = normalizeScanResult(scanResult as Record<string, unknown>);
@@ -151,24 +155,27 @@ export default function WorkerScan() {
               }
             } catch (err: unknown) {
               const message = err instanceof Error ? err.message : "Scan failed";
-              toast({ title: "Scan failed", description: message, variant: "destructive" });
+              toastRef.current({
+                title: "Scan failed",
+                description: message,
+                variant: "destructive",
+              });
               processingRef.current = false;
               setStep("scan");
             }
           },
           () => {},
         );
-
-        if (!cancelled) setCameraStarting(false);
       } catch {
         if (!cancelled) {
-          setCameraStarting(false);
-          toast({
+          toastRef.current({
             title: "Camera access denied",
             description: "Allow camera access to scan QR codes.",
             variant: "destructive",
           });
         }
+      } finally {
+        if (!cancelled) setCameraStarting(false);
       }
     };
 
@@ -181,7 +188,7 @@ export default function WorkerScan() {
       window.clearTimeout(timer);
       void stopScanner();
     };
-  }, [step, purchaseScan, toast, stopScanner]);
+  }, [step, stopScanner]);
 
   const handleConfirmProducts = async () => {
     if (!result?.pendingScanId) return;
