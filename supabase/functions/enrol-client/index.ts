@@ -2,7 +2,6 @@
 // Endpoint: {VITE_SUPABASE_URL}/functions/v1/enrol-client — JWT: OFF
 // Local app: http://localhost:5173/client — All links: supabase/functions/LINKS.md
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import bcrypt from "https://esm.sh/bcryptjs@2.4.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,16 +26,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { fullName, phone, email, password } = await req.json();
+    const { fullName, phone, email } = await req.json();
 
     if (!fullName || typeof fullName !== "string") {
       return jsonResponse({ error: "fullName is required" }, 400);
     }
     if (!phone || typeof phone !== "string") {
       return jsonResponse({ error: "phone is required" }, 400);
-    }
-    if (!password || typeof password !== "string" || password.length < 6) {
-      return jsonResponse({ error: "password must be at least 6 characters" }, 400);
     }
 
     const normalizedPhone = normalizePhone(phone);
@@ -47,35 +43,36 @@ Deno.serve(async (req) => {
 
     const { data: existing } = await admin
       .from("clients")
-      .select("id")
+      .select("card_code, full_name, phone")
       .eq("phone", normalizedPhone)
       .maybeSingle();
 
     if (existing) {
-      return jsonResponse({ error: "A card already exists for this phone number. Please sign in." }, 409);
+      return jsonResponse({
+        cardCode: existing.card_code,
+        fullName: existing.full_name,
+        phone: existing.phone,
+        existing: true,
+      });
     }
-
-    const passwordHash = bcrypt.hashSync(password, 10);
-    const token = crypto.randomUUID();
 
     const { data: client, error } = await admin
       .from("clients")
       .insert({
-        full_name: fullName,
+        full_name: fullName.trim(),
         phone: normalizedPhone,
         email: email?.trim() || null,
-        password_hash: passwordHash,
-        fidelity_qr_token: token,
       })
-      .select("fidelity_qr_token, full_name, phone")
+      .select("card_code, full_name, phone")
       .single();
 
     if (error) return jsonResponse({ error: error.message }, 400);
 
     return jsonResponse({
-      fidelityQrToken: client.fidelity_qr_token,
+      cardCode: client.card_code,
       fullName: client.full_name,
       phone: client.phone,
+      existing: false,
     });
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);

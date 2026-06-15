@@ -36,7 +36,7 @@ export interface Client {
   fullName: string;
   phone: string | null;
   email: string | null;
-  fidelityQrToken: string;
+  cardCode: string;
   totalStamps: number;
   currentCycleStamps: number;
   totalRewardsEarned: number;
@@ -92,7 +92,7 @@ export interface ClientCard {
   cardTemplateUrl: string | null;
   stampThreshold: number;
   currentCycleStamps: number;
-  fidelityQrToken: string;
+  cardCode: string;
   stampMilestones?: { position: number; label: string }[];
   pendingRewardId?: string | null;
   pendingRewardDescription?: string | null;
@@ -107,7 +107,7 @@ export interface RewardClaim {
   redeemedAt: string | null;
   businessName: string;
   primaryColor: string;
-  fidelityQrToken: string;
+  cardCode: string;
 }
 
 export interface AnalyticsOverview {

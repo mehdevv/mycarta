@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   Menu,
 } from "lucide-react";
+import Mascot from "@/components/brand/mascot";
 import { useAuth } from "@/lib/auth";
 import { useLogout, useGetSettings } from "@/api";
 
@@ -84,14 +85,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const brand = (
     <div className="flex items-center gap-3 p-4 border-b border-border">
-      {settings?.logoUrl && (
-        <img src={settings.logoUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
-      )}
-      <div>
-        <h2 className="text-lg font-bold text-primary tracking-tight">
+      <Mascot role="admin" size="sm" animate={false} />
+      <div className="min-w-0">
+        <h2 className="text-lg font-bold text-primary tracking-tight truncate">
           {settings?.businessName ?? "LoyalQR"}
         </h2>
-        <p className="text-xs text-muted-foreground">Dashboard</p>
+        <p className="text-xs text-muted-foreground">Admin dashboard</p>
       </div>
     </div>
   );

@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
 
     const { data: client, error } = await admin
       .from("clients")
-      .select("id, full_name, fidelity_qr_token, password_hash, is_blocked")
+      .select("id, full_name, card_code, password_hash, is_blocked")
       .eq("phone", normalizedPhone)
       .maybeSingle();
 
@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     }
 
     return jsonResponse({
-      fidelityQrToken: client.fidelity_qr_token,
+      cardCode: client.card_code,
       fullName: client.full_name,
     });
   } catch (e) {

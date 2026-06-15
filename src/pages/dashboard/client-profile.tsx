@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { appLink } from "@/lib/links";
+import { formatCardCode } from "@/lib/card-code";
 import { ArrowLeft, Ban, CheckCircle, Trash2, Save } from "lucide-react";
 
 export default function ClientProfile() {
@@ -68,6 +70,20 @@ export default function ClientProfile() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">{client.fullName}</h1>
           <p className="text-sm text-muted-foreground">{client.email ?? client.phone ?? "No contact info"}</p>
+          {client.cardCode && (
+            <p className="text-sm font-mono font-medium mt-1">
+              Card #{formatCardCode(client.cardCode)}
+              {" · "}
+              <a
+                href={appLink(`/card/${client.cardCode}`)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary hover:underline"
+              >
+                Open card
+              </a>
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <Button variant={client.isBlocked ? "outline" : "destructive"} size="sm" onClick={handleToggleBlock}>

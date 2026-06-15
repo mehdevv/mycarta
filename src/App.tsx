@@ -86,8 +86,8 @@ function Router() {
       <Route path="/setup" component={Setup} />
       <Route path="/login" component={Login} />
       <Route path="/enrol" component={Enrol} />
-      <Route path="/card/:token" component={CardView} />
-      <Route path="/rewards/:token" component={RewardClaim} />
+      <Route path="/card/:code" component={CardView} />
+      <Route path="/rewards/:code" component={RewardClaim} />
 
       <Route path="/dashboard/dashboard/:rest*">
         {(params) => <Redirect to={`~/dashboard/${params["rest*"] ?? ""}`} />}

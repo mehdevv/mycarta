@@ -57,8 +57,11 @@ export function extractQrToken(raw: string): string {
   try {
     const url = new URL(trimmed);
     const parts = url.pathname.split("/").filter(Boolean);
-    return parts[parts.length - 1] ?? trimmed;
+    const last = parts[parts.length - 1] ?? trimmed;
+    if (/^\d{1,6}$/.test(last)) return last.padStart(6, "0");
+    return last;
   } catch {
+    if (/^\d{1,6}$/.test(trimmed)) return trimmed.padStart(6, "0");
     return trimmed;
   }
 }

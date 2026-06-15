@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import Mascot from "@/components/brand/mascot";
 import { fadeUp } from "@/lib/motion";
 
 type ClientShellProps = {
@@ -60,15 +61,9 @@ export function ClientCard({
 export function ClientLoading({ label = "Loading your card…" }: { label?: string }) {
   return (
     <ClientShell>
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center p-6 max-w-md mx-auto">
-        <motion.div
-          className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
-        >
-          <div className="h-8 w-8 rounded-xl border-2 border-primary border-t-transparent" />
-        </motion.div>
-        <p className="text-sm text-muted-foreground animate-pulse">{label}</p>
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center p-6 max-w-md mx-auto text-center">
+        <Mascot role="client" size="lg" float />
+        <p className="text-sm text-muted-foreground mt-6 animate-pulse">{label}</p>
       </div>
     </ClientShell>
   );

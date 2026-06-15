@@ -62,7 +62,7 @@ export default function EmployeeLogin() {
   }
 
   return (
-    <AuthShell title="Employee Sign In" description="Staff access to scan and manage customer cards">
+    <AuthShell role="employee" title="Employee Sign In" description="Staff access to scan and manage customer cards">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField

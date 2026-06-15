@@ -4,6 +4,7 @@ import { useWorkerTodayScans } from "@/api";
 import { QrCode, UserCircle, Star } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { motion } from "framer-motion";
+import Mascot from "@/components/brand/mascot";
 import { fadeUp } from "@/lib/motion";
 
 export default function WorkerHome() {
@@ -13,11 +14,14 @@ export default function WorkerHome() {
 
   return (
     <motion.div className="flex-1 flex flex-col p-4 bg-muted/30" variants={fadeUp} initial="initial" animate="animate">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">
-          Hello, {user?.fullName?.split(" ")[0]}
-        </h2>
-        <p className="text-muted-foreground">Ready for a great shift?</p>
+      <div className="mb-6 flex items-start gap-4">
+        <Mascot role="employee" size="md" float />
+        <div className="pt-1">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">
+            Hello, {user?.fullName?.split(" ")[0]}
+          </h2>
+          <p className="text-muted-foreground">Ready for a great shift?</p>
+        </div>
       </div>
 
       <Card className="mb-8 p-6 bg-gradient-to-br from-primary/10 to-primary/5 border-none shadow-md">

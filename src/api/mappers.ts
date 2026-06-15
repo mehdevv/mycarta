@@ -41,7 +41,7 @@ export function mapClient(row: Record<string, unknown>) {
     fullName: r.fullName as string,
     phone: (r.phone as string) ?? null,
     email: (r.email as string) ?? null,
-    fidelityQrToken: r.fidelityQrToken as string,
+    cardCode: (r.cardCode ?? r.fidelityQrToken) as string,
     totalStamps: r.totalStamps as number,
     currentCycleStamps: r.currentCycleStamps as number,
     totalRewardsEarned: r.totalRewardsEarned as number,

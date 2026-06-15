@@ -61,7 +61,7 @@ export default function Setup() {
   }
 
   return (
-    <AuthShell title="Create Owner Account" description="One-time setup for your LoyalQR shop">
+    <AuthShell role="admin" title="Create Owner Account" description="One-time setup for your LoyalQR shop">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField

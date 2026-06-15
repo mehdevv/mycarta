@@ -5,6 +5,7 @@ import { Users, QrCode, Gift, ShieldAlert, Download, Contact } from "lucide-reac
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
+import Mascot from "@/components/brand/mascot";
 import { fadeUp } from "@/lib/motion";
 import {
   LineChart,
@@ -37,8 +38,11 @@ export default function DashboardOverview() {
 
   return (
     <motion.div className="space-y-8" variants={fadeUp} initial="initial" animate="animate">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <Mascot role="admin" size="md" float />
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        </div>
       </div>
 
       {analytics.fraudAlertsToday > 0 && (

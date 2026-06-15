@@ -17,13 +17,42 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function extractToken(raw: string): string {
+  const trimmed = raw.trim();
   try {
-    const url = new URL(raw.trim());
+    const url = new URL(trimmed);
     const parts = url.pathname.split("/").filter(Boolean);
-    return parts[parts.length - 1] ?? raw;
+    const last = parts[parts.length - 1] ?? trimmed;
+    if (/^\d{1,6}$/.test(last)) return last.padStart(6, "0");
+    return last;
   } catch {
-    return raw.trim();
+    if (/^\d{1,6}$/.test(trimmed)) return trimmed.padStart(6, "0");
+    return trimmed;
   }
+}
+
+async function findClientByToken(
+  admin: ReturnType<typeof createClient>,
+  token: string,
+) {
+  const lookup = extractToken(token);
+
+  const { data: byCode } = await admin
+    .from("clients")
+    .select("*")
+    .eq("card_code", lookup)
+    .maybeSingle();
+  if (byCode) return byCode;
+
+  if (/^[0-9a-f-]{36}$/i.test(lookup)) {
+    const { data: byUuid } = await admin
+      .from("clients")
+      .select("*")
+      .eq("fidelity_qr_token", lookup)
+      .maybeSingle();
+    if (byUuid) return byUuid;
+  }
+
+  return null;
 }
 
 type StampMilestone = { position: number; label: string };
@@ -123,11 +152,7 @@ Deno.serve(async (req) => {
     );
 
     const { data: settings } = await admin.from("shop_settings").select("*").limit(1).single();
-    const { data: client } = await admin
-      .from("clients")
-      .select("*")
-      .eq("fidelity_qr_token", token)
-      .single();
+    const client = await findClientByToken(admin, token);
 
     if (!client) return jsonResponse({ error: "Client not found" }, 404);
 

@@ -6,25 +6,35 @@ import { Download, Share2, Gift, ChevronRight } from "lucide-react";
 import { parseStampMilestones } from "@/lib/stamp-milestones";
 import { QRCodeSVG } from "qrcode.react";
 import { motion } from "framer-motion";
-import { fadeUp, scaleIn, tapScale, vibrate } from "@/lib/motion";
+import { fadeUp, scaleIn, tapScale, vibrate, cardReveal, headerStagger, headerItem } from "@/lib/motion";
 import ClientShell, { ClientLoading } from "@/components/client/client-shell";
+import Mascot from "@/components/brand/mascot";
 import ClientStampGrid, { nextMilestoneHint } from "@/components/client/stamp-grid";
-import { useEffect } from "react";
+import CardLinkBar from "@/components/client/card-link-bar";
+import { cardPageUrl, normalizeCardCode } from "@/lib/card-code";
+import { useEffect, useMemo } from "react";
+
+const FIDELITY_CARD_BG = "/fidelity-card-bg.png";
 
 export default function CardView() {
-  const [, params] = useRoute("/card/:token");
-  const token = params?.token;
+  const [, params] = useRoute("/card/:code");
+  const code = params?.code ? normalizeCardCode(params.code) : "";
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const { data: card, isLoading, error } = useGetClientCard(token || "", {
-    query: { enabled: !!token },
+  const { data: card, isLoading, error } = useGetClientCard(code, {
+    query: { enabled: !!code },
   });
+
+  const isNewCard = useMemo(
+    () => new URLSearchParams(window.location.search).get("new") === "1",
+    [],
+  );
 
   useEffect(() => {
     if (card?.pendingRewardId) vibrate([30, 50, 30]);
   }, [card?.pendingRewardId]);
 
-  if (!token) {
+  if (!code) {
     return (
       <ClientShell>
         <div className="flex min-h-[100dvh] items-center justify-center p-4 text-center text-muted-foreground">
@@ -60,7 +70,6 @@ export default function CardView() {
   }
 
   const milestones = parseStampMilestones(card.stampMilestones);
-  const bgImage = card.cardTemplateUrl || "/card-bg.png";
   const progress = Math.min(100, (card.currentCycleStamps / card.stampThreshold) * 100);
   const hint = nextMilestoneHint(card.currentCycleStamps, card.stampThreshold, milestones);
 
@@ -87,25 +96,65 @@ export default function CardView() {
   return (
     <ClientShell primaryColor={card.primaryColor} secondaryColor="#0E9F6E">
       <motion.div
-        className="flex flex-col min-h-[100dvh] max-w-md mx-auto pb-28"
+        className="flex flex-col min-h-[100dvh] max-w-md mx-auto pb-6"
         variants={fadeUp}
         initial="initial"
         animate="animate"
       >
-        <header className="px-4 pt-6 pb-2 text-center">
-          <motion.p
-            className="text-xs font-semibold uppercase tracking-widest opacity-70"
-            style={{ color: card.primaryColor }}
-          >
-            {card.businessName}
-          </motion.p>
-          <h1 className="text-2xl font-bold mt-1">{card.clientName}</h1>
-        </header>
+        <motion.header
+          className="px-4 pt-4 pb-3 flex items-center justify-between gap-3"
+          variants={headerStagger}
+          initial="initial"
+          animate="animate"
+        >
+          <motion.div variants={headerItem} className="flex items-center gap-2.5 min-w-0">
+            <Mascot role="client" size="xs" animate={false} className="shrink-0" />
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold leading-tight truncate text-foreground drop-shadow-sm">
+                {card.clientName}
+              </h1>
+              <p
+                className="text-[11px] font-semibold uppercase tracking-wide truncate"
+                style={{ color: card.primaryColor }}
+              >
+                {card.businessName}
+              </p>
+            </div>
+          </motion.div>
+          <motion.div variants={headerItem} className="flex items-center gap-1.5 shrink-0">
+            <motion.div {...tapScale()}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 px-2.5 rounded-lg text-xs bg-white/90 shadow-sm border-gray-200"
+                onClick={handleShare}
+                aria-label="Share card"
+              >
+                <Share2 className="h-3.5 w-3.5" />
+                <span className="ml-1">Share</span>
+              </Button>
+            </motion.div>
+            <motion.div {...tapScale()}>
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 px-2.5 rounded-lg text-xs shadow-sm"
+                onClick={handleDownload}
+                style={{ backgroundColor: card.primaryColor }}
+                aria-label="Save card"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span className="ml-1">Save</span>
+              </Button>
+            </motion.div>
+          </motion.div>
+        </motion.header>
 
         {card.pendingRewardId && (
           <motion.div variants={scaleIn} className="px-4 mb-4">
             <Link
-              href={`/rewards/${token}`}
+              href={`/rewards/${card.cardCode}`}
               className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 shadow-sm active:scale-[0.98] transition-transform"
             >
               <div className="h-12 w-12 rounded-full bg-amber-400 flex items-center justify-center shrink-0 shadow-md">
@@ -121,49 +170,57 @@ export default function CardView() {
         )}
 
         <div className="px-4 flex-1">
-          <div
+          <motion.div
             ref={cardRef}
-            className="relative w-full rounded-3xl shadow-2xl overflow-hidden bg-white"
-            style={{ borderTop: `6px solid ${card.primaryColor}` }}
+            className="relative w-full rounded-3xl overflow-hidden border border-white/70 shadow-[0_8px_32px_rgba(15,23,42,0.12)]"
+            variants={cardReveal}
+            initial="initial"
+            animate="animate"
           >
             <div
-              className="absolute inset-0 opacity-15 bg-cover bg-center pointer-events-none"
-              style={{ backgroundImage: `url(${bgImage})` }}
+              className="absolute inset-0 bg-cover bg-center pointer-events-none"
+              style={{
+                backgroundImage: `url(${FIDELITY_CARD_BG})`,
+                opacity: 0.75,
+              }}
             />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/55 via-white/35 to-white/65 pointer-events-none" />
 
-            <div className="relative p-5 flex justify-center bg-white/85">
+            <div className="relative p-5 flex justify-center">
               <motion.div
-                className="bg-white p-3 rounded-2xl shadow-md border border-gray-100"
-                animate={{ boxShadow: [`0 4px 20px ${card.primaryColor}15`, `0 4px 28px ${card.primaryColor}35`, `0 4px 20px ${card.primaryColor}15`] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                className="bg-white p-3.5 rounded-2xl shadow-lg border border-gray-200/90"
+                initial={{ opacity: 0, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: "spring", stiffness: 340, damping: 28, delay: 0.12 }}
               >
-                <QRCodeSVG value={token} size={188} level="H" fgColor="#111" />
+                <QRCodeSVG value={cardPageUrl(card.cardCode)} size={188} level="H" fgColor="#111" />
               </motion.div>
             </div>
 
-            <div className="relative px-5 pb-6 pt-2 bg-white/95">
+            <div className="relative mx-4 mb-4 rounded-2xl bg-white/95 backdrop-blur-md border border-white/80 shadow-sm px-4 py-4">
               <div className="flex justify-between items-end mb-2">
-                <span className="text-sm font-medium text-gray-600">Progress</span>
+                <span className="text-sm font-semibold text-gray-700">Progress</span>
                 <span className="text-lg font-bold tabular-nums" style={{ color: card.primaryColor }}>
                   {card.currentCycleStamps}/{card.stampThreshold}
                 </span>
               </div>
 
-              <div className="h-2 rounded-full bg-gray-100 overflow-hidden mb-4">
+              <div className="h-2.5 rounded-full bg-gray-200/80 overflow-hidden mb-4 shadow-inner">
                 <motion.div
-                  className="h-full rounded-full"
+                  className="h-full rounded-full shadow-sm"
                   style={{ backgroundColor: card.primaryColor }}
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}
-                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{ duration: 1, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
                 />
               </div>
 
               {hint && (
                 <motion.p
-                  initial={{ opacity: 0, y: 4 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-xs text-center font-medium mb-3 px-2 py-2 rounded-lg bg-amber-50 text-amber-900 border border-amber-100"
+                  transition={{ delay: 0.5, duration: 0.35 }}
+                  className="text-xs text-center font-semibold mb-3 px-3 py-2 rounded-xl bg-amber-50 text-amber-950 border border-amber-200/80 shadow-sm"
                 >
                   {hint}
                 </motion.p>
@@ -176,10 +233,18 @@ export default function CardView() {
                 primaryColor={card.primaryColor}
               />
 
-              <p className="text-center text-xs text-gray-500 mt-5">
+              <p className="text-center text-xs font-medium text-gray-600 mt-5">
                 Show this QR at the counter to collect stamps
               </p>
             </div>
+          </motion.div>
+
+          <div className="mt-4">
+            <CardLinkBar
+              code={card.cardCode}
+              primaryColor={card.primaryColor}
+              prominent={isNewCard}
+            />
           </div>
 
           {card.recentScans && card.recentScans.length > 0 && (
@@ -214,31 +279,6 @@ export default function CardView() {
               </div>
             </motion.div>
           )}
-        </div>
-
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white/95 to-transparent pt-8">
-          <div className="max-w-md mx-auto flex gap-3">
-            <motion.div className="flex-1" {...tapScale()}>
-              <Button
-                className="w-full h-14 rounded-2xl text-base"
-                variant="outline"
-                onClick={handleShare}
-              >
-                <Share2 className="mr-2 h-5 w-5" />
-                Share
-              </Button>
-            </motion.div>
-            <motion.div className="flex-1" {...tapScale()}>
-              <Button
-                className="w-full h-14 rounded-2xl text-base shadow-lg"
-                onClick={handleDownload}
-                style={{ backgroundColor: card.primaryColor }}
-              >
-                <Download className="mr-2 h-5 w-5" />
-                Save
-              </Button>
-            </motion.div>
-          </div>
         </div>
       </motion.div>
     </ClientShell>

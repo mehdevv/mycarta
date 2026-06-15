@@ -5,19 +5,22 @@ import { CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { celebrate, fadeUp, scaleIn, tapScale } from "@/lib/motion";
 import ClientShell, { ClientCard, ClientLoading } from "@/components/client/client-shell";
-import { ArrowLeft, Gift, QrCode } from "lucide-react";
+import Mascot from "@/components/brand/mascot";
+import { ArrowLeft, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
-export default function RewardClaim() {
-  const [, params] = useRoute("/rewards/:token");
-  const token = params?.token ?? "";
+import { normalizeCardCode } from "@/lib/card-code";
 
-  const { data: reward, isLoading, error } = useGetRewardClaim(token, {
-    query: { enabled: !!token },
+export default function RewardClaim() {
+  const [, params] = useRoute("/rewards/:code");
+  const code = params?.code ? normalizeCardCode(params.code) : "";
+
+  const { data: reward, isLoading, error } = useGetRewardClaim(code, {
+    query: { enabled: !!code },
   });
   const [, navigate] = useLocation();
 
-  if (!token) {
+  if (!code) {
     return (
       <ClientShell>
         <div className="flex min-h-[100dvh] items-center justify-center p-4 text-muted-foreground">
@@ -39,7 +42,7 @@ export default function RewardClaim() {
               <p className="text-muted-foreground text-sm mb-6">
                 You don&apos;t have a prize to claim right now. Keep collecting stamps!
               </p>
-              <Button className="w-full h-12 rounded-xl" variant="outline" onClick={() => navigate(`/card/${token}`)}>
+              <Button className="w-full h-12 rounded-xl" variant="outline" onClick={() => navigate(`/card/${code}`)}>
                 Back to my card
               </Button>
             </ClientCard>
@@ -58,7 +61,7 @@ export default function RewardClaim() {
         animate="animate"
       >
         <Link
-          href={`/card/${token}`}
+          href={`/card/${reward.cardCode}`}
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6 min-h-12 w-fit -ml-1 px-1"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -66,14 +69,7 @@ export default function RewardClaim() {
         </Link>
 
         <motion.div variants={celebrate} initial="initial" animate="animate" className="text-center mb-6">
-          <motion.div
-            className="h-20 w-20 rounded-full mx-auto flex items-center justify-center shadow-xl mb-4"
-            style={{ background: "linear-gradient(135deg, #F59E0B, #EA580C)" }}
-            animate={{ rotate: [0, -4, 4, 0] }}
-            transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 2 }}
-          >
-            <Gift className="h-10 w-10 text-white" />
-          </motion.div>
+          <Mascot role="client" size="md" className="mx-auto mb-4" float />
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             {reward.businessName}
           </p>
@@ -118,7 +114,7 @@ export default function RewardClaim() {
           <Button
             className="w-full h-14 rounded-2xl text-base"
             variant="outline"
-            onClick={() => navigate(`/card/${token}`)}
+            onClick={() => navigate(`/card/${reward.cardCode}`)}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to loyalty card

@@ -134,12 +134,14 @@ export function useEnrolClient() {
     mutationFn: async ({
       data,
     }: {
-      data: { fullName: string; phone: string; password: string; email?: string };
+      data: { fullName: string; phone: string; email?: string };
     }) => {
-      return invokeFunction<{ fidelityQrToken: string; fullName: string; phone: string }>(
-        "enrol-client",
-        data,
-      );
+      return invokeFunction<{
+        cardCode: string;
+        fullName: string;
+        phone: string;
+        existing?: boolean;
+      }>("enrol-client", data);
     },
   });
 }
@@ -147,7 +149,7 @@ export function useEnrolClient() {
 export function useLoginClient() {
   return useMutation({
     mutationFn: async ({ data }: { data: { phone: string; password: string } }) => {
-      return invokeFunction<{ fidelityQrToken: string; fullName: string }>("login-client", data);
+      return invokeFunction<{ cardCode: string; fullName: string }>("login-client", data);
     },
   });
 }
