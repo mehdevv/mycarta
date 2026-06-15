@@ -17,6 +17,7 @@ import { useClientI18n } from "@/hooks/use-client-i18n";
 import { useEffect, useMemo } from "react";
 
 const FIDELITY_CARD_BG = "/fidelity-card-bg.png";
+const SCAN_HISTORY_WINDOW_MS = 60 * 60 * 1000;
 
 export default function CardView() {
   const [, params] = useRoute("/card/:code");
@@ -75,6 +76,9 @@ export default function CardView() {
   const progress = Math.min(100, (card.currentCycleStamps / card.stampThreshold) * 100);
   const hint = nextMilestoneHintText(card.currentCycleStamps, card.stampThreshold, milestones, t);
   const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
+  const recentScans = (card.recentScans ?? []).filter(
+    (scan) => Date.now() - new Date(scan.scannedAt).getTime() < SCAN_HISTORY_WINDOW_MS,
+  );
 
   const handleDownload = async () => {
     if (!cardRef.current) return;
@@ -248,24 +252,24 @@ export default function CardView() {
             />
           </div>
 
-          {card.recentScans && card.recentScans.length > 0 && (
+          {recentScans.length > 0 && (
             <motion.div className="mt-6" variants={fadeUp}>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 px-1">
                 {t("recentVisits")}
               </h3>
               <div className="space-y-2">
-                {card.recentScans.map((scan, i) => (
+                {recentScans.map((scan, i) => (
                   <motion.div
-                    key={i}
+                    key={`${scan.scannedAt}-${i}`}
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 }}
                     className="flex justify-between text-sm bg-white/80 backdrop-blur rounded-xl px-4 py-3 shadow-sm border border-white/60"
                   >
                     <span className="text-muted-foreground">
-                      {new Date(scan.scannedAt).toLocaleDateString(dateLocale, {
-                        month: "short",
-                        day: "numeric",
+                      {new Date(scan.scannedAt).toLocaleTimeString(dateLocale, {
+                        hour: "numeric",
+                        minute: "2-digit",
                       })}
                     </span>
                     <span
