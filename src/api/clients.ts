@@ -142,54 +142,12 @@ export function useGetClientCard(token: string, options?: { query?: { enabled?: 
     queryKey: ["client-card", token],
     enabled: (options?.query?.enabled ?? true) && !!token,
     queryFn: async (): Promise<ClientCard> => {
-      const { data: client, error } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("fidelity_qr_token", token)
-        .single();
+      const { data, error } = await supabase.rpc("get_client_card_by_token", {
+        p_token: token,
+      });
       if (error) throw error;
-
-      const { data: settings } = await supabase
-        .from("shop_settings")
-        .select("*")
-        .limit(1)
-        .single();
-
-      const { data: pendingReward } = await supabase
-        .from("rewards")
-        .select("id, reward_description")
-        .eq("client_id", client.id)
-        .is("redeemed_at", null)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const { data: recentScans } = await supabase
-        .from("scan_logs")
-        .select("scanned_at, status, stamps_added")
-        .eq("client_id", client.id)
-        .order("scanned_at", { ascending: false })
-        .limit(5);
-
-      const s = settings ? mapSettings(settings) : null;
-
-      return {
-        businessName: s?.businessName ?? "LoyalQR",
-        clientName: client.full_name,
-        primaryColor: s?.primaryColor ?? "#1A56DB",
-        cardUrl: client.card_url,
-        cardTemplateUrl: s?.cardTemplateUrl ?? "/card-bg.png",
-        stampThreshold: s?.stampThreshold ?? 9,
-        currentCycleStamps: client.current_cycle_stamps,
-        fidelityQrToken: client.fidelity_qr_token,
-        pendingRewardId: pendingReward?.id ?? null,
-        pendingRewardDescription: pendingReward?.reward_description ?? null,
-        recentScans: (recentScans ?? []).map((scan) => ({
-          scannedAt: scan.scanned_at,
-          status: scan.status,
-          stampsAdded: scan.stamps_added,
-        })),
-      };
+      if (!data) throw new Error("Card not found");
+      return data as ClientCard;
     },
   });
 }

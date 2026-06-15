@@ -1,7 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { RewardClaim } from "./types";
-import { mapSettings } from "./mappers";
 
 export const getListRewardsQueryKey = (params?: Record<string, unknown>) =>
   ["rewards", params] as const;
@@ -62,41 +61,11 @@ export function useGetRewardClaim(token: string, options?: { query?: { enabled?:
     queryKey: ["reward-claim", token],
     enabled: (options?.query?.enabled ?? true) && !!token,
     queryFn: async (): Promise<RewardClaim | null> => {
-      const { data: client, error: clientError } = await supabase
-        .from("clients")
-        .select("id, full_name, fidelity_qr_token")
-        .eq("fidelity_qr_token", token)
-        .single();
-      if (clientError) return null;
-
-      const { data: reward, error: rewardError } = await supabase
-        .from("rewards")
-        .select("*")
-        .eq("client_id", client.id)
-        .is("redeemed_at", null)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (rewardError || !reward) return null;
-
-      const { data: settings } = await supabase
-        .from("shop_settings")
-        .select("*")
-        .limit(1)
-        .single();
-
-      const s = settings ? mapSettings(settings) : null;
-
-      return {
-        id: reward.id,
-        clientName: client.full_name,
-        rewardDescription: reward.reward_description,
-        createdAt: reward.created_at,
-        redeemedAt: reward.redeemed_at,
-        businessName: s?.businessName ?? "LoyalQR",
-        primaryColor: s?.primaryColor ?? "#1A56DB",
-        fidelityQrToken: client.fidelity_qr_token,
-      };
+      const { data, error } = await supabase.rpc("get_reward_claim_by_token", {
+        p_token: token,
+      });
+      if (error) throw error;
+      return (data as RewardClaim | null) ?? null;
     },
   });
 }
