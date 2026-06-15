@@ -34,7 +34,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
     <div className="flex flex-col min-h-[100dvh] bg-background">
       <header className="h-14 border-b border-border bg-card flex items-center gap-2 px-4 sticky top-0 z-10 shrink-0 shadow-sm">
         <Mascot role="employee" size="xs" animate={false} />
-        <h1 className="text-lg font-bold text-primary tracking-tight">LoyalQR Scanner</h1>
+        <h1 className="text-lg font-bold text-primary tracking-tight">Iceking Card</h1>
         <div className="ml-auto">
           <Button
             variant="ghost"

@@ -24,7 +24,7 @@ export default function Scans() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "scan-log-loyalqr.csv";
+      link.download = "scan-log-iceking-card.csv";
       link.click();
       URL.revokeObjectURL(url);
     } catch {

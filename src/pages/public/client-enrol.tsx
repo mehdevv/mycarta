@@ -11,6 +11,7 @@ import { motion } from "framer-motion";
 import { tapScale } from "@/lib/motion";
 import ClientShell, { ClientCard, ClientLoading } from "@/components/client/client-shell";
 import Mascot from "@/components/brand/mascot";
+import { APP_NAME } from "@/lib/app-name";
 import { isCardCode, normalizeCardCode } from "@/lib/card-code";
 import { ArrowRight, Hash, Loader2, Smartphone, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -77,7 +78,7 @@ export default function ClientEnrol() {
         <ClientCard className="overflow-hidden w-full">
           <div className="p-6 pb-4 text-center border-b border-border/50">
             <Mascot role="client" size="md" className="mx-auto mb-3" float />
-            <h1 className="text-xl font-bold tracking-tight">{settings?.businessName || "LoyalQR"}</h1>
+            <h1 className="text-xl font-bold tracking-tight">{settings?.businessName || APP_NAME}</h1>
             <p className="text-sm text-muted-foreground mt-1 flex items-center justify-center gap-1">
               <Sparkles className="h-3.5 w-3.5" />
               {t("getFreeCard")}

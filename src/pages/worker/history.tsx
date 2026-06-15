@@ -3,7 +3,7 @@ import { Button, Card, Chip } from "@heroui/react";
 import { useWorkerTodayScans } from "@/api";
 import { motion } from "framer-motion";
 import { fadeUp, staggerContainer } from "@/lib/motion";
-import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Phone, XCircle } from "lucide-react";
 
 export default function WorkerHistory() {
   const { data, isLoading } = useWorkerTodayScans();
@@ -43,6 +43,12 @@ export default function WorkerHistory() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold">{scan.clientName}</p>
+                    {scan.clientPhone && (
+                      <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                        <Phone className="h-3 w-3 shrink-0" aria-hidden />
+                        {scan.clientPhone}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-1">
                       {new Date(scan.scannedAt).toLocaleTimeString()}
                     </p>

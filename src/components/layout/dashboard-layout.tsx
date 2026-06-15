@@ -15,6 +15,7 @@ import {
   Menu,
 } from "lucide-react";
 import Mascot from "@/components/brand/mascot";
+import { APP_NAME } from "@/lib/app-name";
 import { useAuth } from "@/lib/auth";
 import { useLogout, useGetSettings } from "@/api";
 
@@ -88,7 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Mascot role="admin" size="sm" animate={false} />
       <div className="min-w-0">
         <h2 className="text-lg font-bold text-primary tracking-tight truncate">
-          {settings?.businessName ?? "LoyalQR"}
+          {settings?.businessName ?? APP_NAME}
         </h2>
         <p className="text-xs text-muted-foreground">Admin dashboard</p>
       </div>

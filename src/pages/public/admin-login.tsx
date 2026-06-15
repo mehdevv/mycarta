@@ -69,7 +69,7 @@ export default function AdminLogin() {
   }
 
   return (
-    <AuthShell role="admin" title="Admin Sign In" description="Owner access to the LoyalQR dashboard">
+    <AuthShell role="admin" title="Admin Sign In" description="Owner access to the Iceking Card dashboard">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField

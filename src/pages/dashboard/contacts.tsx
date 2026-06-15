@@ -17,7 +17,7 @@ export default function Contacts() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "contacts-loyalqr.csv";
+      link.download = "contacts-iceking-card.csv";
       link.click();
       URL.revokeObjectURL(url);
     } catch {

@@ -78,7 +78,7 @@ export function useWorkerTodayScans() {
 
       const { data, count, error } = await supabase
         .from("scan_logs")
-        .select("*, clients:client_id(full_name)", { count: "exact" })
+        .select("*, clients:client_id(full_name, phone)", { count: "exact" })
         .eq("worker_id", user.id)
         .gte("scanned_at", todayStart.toISOString())
         .order("scanned_at", { ascending: false });
@@ -90,6 +90,7 @@ export function useWorkerTodayScans() {
         scans: (data ?? []).map((s) => ({
           id: s.id,
           clientName: (s.clients as { full_name?: string } | null)?.full_name ?? "Unknown",
+          clientPhone: (s.clients as { phone?: string | null } | null)?.phone ?? null,
           status: s.status,
           stampsAdded: s.stamps_added,
           rewardTriggered: s.reward_triggered,
