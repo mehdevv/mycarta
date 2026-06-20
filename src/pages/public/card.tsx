@@ -16,7 +16,7 @@ import { useClientI18n } from "@/hooks/use-client-i18n";
 import { useEffect } from "react";
 import { useShopBranding, normalizeAssetUrl, resolveBusinessLogo } from "@/hooks/use-branding";
 import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
-import { rememberClientTenantSlug, clientCardPath } from "@/lib/scoped-routes";
+import { rememberClientTenantSlug, clientEnrolPath, getClientTenantSlug } from "@/lib/scoped-routes";
 
 export default function CardView() {
   const [, slugParams] = useRoute("/:slug/card/:code");
