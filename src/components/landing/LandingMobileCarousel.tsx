@@ -4,6 +4,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -41,10 +42,34 @@ export function LandingMobileCarousel({
   className = "",
 }: LandingMobileCarouselProps) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef({ active: false, startX: 0, scrollLeft: 0, moved: false });
   const slides = Children.toArray(children);
   const count = slides.length;
   const [active, setActive] = useState(0);
   const [isCarousel, setIsCarousel] = useState(() => readIsCarousel(minWidth));
+
+  const syncActiveFromScroll = useCallback(() => {
+    const track = trackRef.current;
+    if (!track) return;
+
+    const slidesEls = Array.from(track.querySelectorAll<HTMLElement>("[data-carousel-slide]"));
+    if (!slidesEls.length) return;
+
+    const center = track.scrollLeft + track.clientWidth / 2;
+    let bestIndex = 0;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    slidesEls.forEach((slide, i) => {
+      const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
+      const distance = Math.abs(slideCenter - center);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = i;
+      }
+    });
+
+    setActive((prev) => (prev === bestIndex ? prev : bestIndex));
+  }, []);
 
   const scrollTo = useCallback((index: number, behavior: ScrollBehavior = "smooth") => {
     const track = trackRef.current;
@@ -111,6 +136,70 @@ export function LandingMobileCarousel({
     return () => observer.disconnect();
   }, [isCarousel, count]);
 
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track || !isCarousel) return;
+
+    const onScroll = () => syncActiveFromScroll();
+    track.addEventListener("scroll", onScroll, { passive: true });
+    return () => track.removeEventListener("scroll", onScroll);
+  }, [isCarousel, count, syncActiveFromScroll]);
+
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!isCarousel) return;
+    const track = trackRef.current;
+    if (!track) return;
+
+    dragRef.current = {
+      active: true,
+      startX: e.clientX,
+      scrollLeft: track.scrollLeft,
+      moved: false,
+    };
+    track.setPointerCapture(e.pointerId);
+    track.style.scrollSnapType = "none";
+    track.style.cursor = "grabbing";
+  };
+
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current.active) return;
+    const track = trackRef.current;
+    if (!track) return;
+
+    const dx = e.clientX - dragRef.current.startX;
+    if (Math.abs(dx) > 6) dragRef.current.moved = true;
+    track.scrollLeft = dragRef.current.scrollLeft - dx;
+  };
+
+  const endPointerDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current.active) return;
+    const track = trackRef.current;
+    dragRef.current.active = false;
+    if (!track) return;
+
+    track.releasePointerCapture(e.pointerId);
+    track.style.cursor = "";
+    track.style.scrollSnapType = "";
+
+    if (!dragRef.current.moved) return;
+
+    const slidesEls = Array.from(track.querySelectorAll<HTMLElement>("[data-carousel-slide]"));
+    const center = track.scrollLeft + track.clientWidth / 2;
+    let bestIndex = 0;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    slidesEls.forEach((slide, i) => {
+      const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
+      const distance = Math.abs(slideCenter - center);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = i;
+      }
+    });
+
+    scrollTo(bestIndex, "smooth");
+  };
+
   const goPrev = () => scrollTo(active - 1);
   const goNext = () => scrollTo(active + 1);
 
@@ -124,6 +213,10 @@ export function LandingMobileCarousel({
           role="region"
           aria-roledescription="carousel"
           aria-label={ariaLabel}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endPointerDrag}
+          onPointerCancel={endPointerDrag}
         >
           {slides.map((slide, i) => (
             <div

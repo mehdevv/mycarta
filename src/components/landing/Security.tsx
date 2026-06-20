@@ -23,7 +23,7 @@ export function LandingSecurity() {
               align="left"
               className="!mb-8 [&_.landing-body]:text-white/65 [&_.landing-eyebrow]:text-white/50 [&_.landing-h2]:text-white"
             />
-            <Link href="/shop?tab=signup" className="btn-pill w-full sm:w-auto justify-center">
+            <Link href="/shop?tab=signup" className="btn-pill landing-security-cta w-full sm:w-auto justify-center">
               Essayer en toute confiance
             </Link>
           </div>
@@ -38,7 +38,7 @@ export function LandingSecurity() {
               return (
                 <article
                   key={it.title}
-                  className="p-6 rounded-[var(--landing-radius-card-lg)] h-full"
+                  className="landing-security-card p-5 sm:p-6 rounded-[var(--landing-radius-card-lg)] h-full"
                   style={{
                     background: "var(--landing-bg-dark-elevated)",
                     border: "1px solid rgba(255,255,255,0.08)",
