@@ -933,14 +933,8 @@ html:has(.landing-page) {
     width: 100%;
   }
 
-  @media (max-width: 639px) {
-    .landing-carousel-shell {
-      margin-inline: -16px;
-      padding-inline: 16px;
-    }
-  }
-
   .landing-carousel-track[data-carousel-mode="true"] {
+    --landing-carousel-edge-pad: 16px;
     display: flex;
     flex-direction: row;
     align-items: stretch;
@@ -954,9 +948,15 @@ html:has(.landing-page) {
     scrollbar-width: none;
     width: 100%;
     margin: 0;
-    padding: 2px 0 6px;
-    scroll-padding-inline: 16px;
+    padding-inline: var(--landing-carousel-edge-pad);
+    scroll-padding-inline: var(--landing-carousel-edge-pad);
     cursor: grab;
+  }
+
+  @media (min-width: 640px) {
+    .landing-carousel-track[data-carousel-mode="true"] {
+      --landing-carousel-edge-pad: 20px;
+    }
   }
 
   .landing-carousel-track[data-carousel-mode="true"]::-webkit-scrollbar {
@@ -964,14 +964,15 @@ html:has(.landing-page) {
   }
 
   .landing-carousel-track[data-carousel-mode="true"] .landing-carousel-slide {
-    flex: 0 0 calc(100% - 2.5rem);
-    width: calc(100% - 2.5rem);
-    max-width: calc(100% - 2.5rem);
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
     scroll-snap-align: center;
     scroll-snap-stop: normal;
     min-width: 0;
     box-sizing: border-box;
-    padding: 4px 2px;
+    padding-block: var(--landing-carousel-edge-pad);
+    padding-inline: 0;
   }
 
   .landing-carousel-track[data-carousel-mode="true"] .landing-carousel-slide > * {
@@ -981,28 +982,14 @@ html:has(.landing-page) {
     word-break: break-word;
   }
 
-  .landing-carousel-track[data-carousel-mode="true"].landing-pricing-grid {
-    padding-block: 10px;
-    scroll-padding-inline: 8px;
-  }
-
-  .landing-carousel-track[data-carousel-mode="true"].landing-pricing-grid .landing-carousel-slide {
-    flex: 0 0 calc(100% - 2rem);
-    width: calc(100% - 2rem);
-    max-width: calc(100% - 2rem);
-    padding: 8px 6px;
-  }
-
-  .landing-carousel-track[data-carousel-mode="true"].landing-features-carousel .landing-carousel-slide {
-    flex: 0 0 calc(100% - 1.5rem);
-    width: calc(100% - 1.5rem);
-    max-width: calc(100% - 1.5rem);
-  }
-
-  .landing-carousel-track[data-carousel-mode="true"].landing-security-grid .landing-carousel-slide {
-    flex: 0 0 86%;
-    width: 86%;
-    max-width: 86%;
+  .landing-carousel-track[data-carousel-mode="true"].landing-pricing-grid .landing-carousel-slide,
+  .landing-carousel-track[data-carousel-mode="true"].landing-features-carousel .landing-carousel-slide,
+  .landing-carousel-track[data-carousel-mode="true"].landing-security-grid .landing-carousel-slide,
+  .landing-carousel-track[data-carousel-mode="true"].landing-problem-grid .landing-carousel-slide,
+  .landing-carousel-track[data-carousel-mode="true"].landing-steps-grid .landing-carousel-slide {
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
   }
 
   @media (max-width: 639px) {
