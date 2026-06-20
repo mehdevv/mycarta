@@ -134,14 +134,15 @@ export function useEnrolClient() {
     mutationFn: async ({
       data,
     }: {
-      data: { fullName: string; phone: string; email?: string };
+      data: { fullName: string; phone: string; email?: string; slug: string };
     }) => {
       return invokeFunction<{
         cardCode: string;
         fullName: string;
         phone: string;
         existing?: boolean;
-      }>("enrol-client", data);
+        tenantSlug?: string;
+      }>("enrol-client", { ...data, tenantSlug: data.slug });
     },
   });
 }
@@ -154,15 +155,19 @@ export function useLoginClient() {
   });
 }
 
-export function useGetClientCard(token: string, options?: { query?: { enabled?: boolean } }) {
+export function useGetClientCard(
+  token: string,
+  options?: { query?: { enabled?: boolean }; tenantId?: string },
+) {
   return useQuery({
-    queryKey: ["client-card", token],
+    queryKey: ["client-card", token, options?.tenantId],
     enabled: (options?.query?.enabled ?? true) && !!token,
     refetchOnWindowFocus: true,
     refetchInterval: 8000,
     queryFn: async (): Promise<ClientCard> => {
       const { data, error } = await supabase.rpc("get_client_card_by_token", {
         p_token: token,
+        p_tenant_id: options?.tenantId ?? null,
       });
       if (error) throw error;
       if (!data) throw new Error("Card not found");
@@ -171,7 +176,7 @@ export function useGetClientCard(token: string, options?: { query?: { enabled?: 
 
       const { data: rewardsData, error: rewardsError } = await supabase.rpc(
         "get_client_rewards_by_token",
-        { p_token: token },
+        { p_token: token, p_tenant_id: options?.tenantId ?? null },
       );
 
       if (!rewardsError && Array.isArray(rewardsData) && rewardsData.length > 0) {

@@ -1,10 +1,44 @@
-project_id = "ice-king-loyalty"
+# Supabase CLI — linked project: qealyijgeosyvmfpojzq
+# Deploy all functions: npm run deploy:functions
+
+project_id = "qealyijgeosyvmfpojzq"
 
 [api]
 enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
 
-[db]
-major_version = 15
-
-[functions]
+[functions.register-tenant]
 verify_jwt = false
+
+[functions.enrol-client]
+verify_jwt = false
+
+[functions.login-client]
+verify_jwt = false
+
+[functions.chargily-webhook]
+verify_jwt = false
+
+[functions.setup-owner]
+verify_jwt = false
+
+[functions.platform-tenant-action]
+verify_jwt = true
+
+[functions.review-payment-receipt]
+verify_jwt = true
+
+[functions.override-tenant-plan]
+verify_jwt = true
+
+[functions.submit-payment-receipt]
+verify_jwt = true
+
+[functions.create-chargily-checkout]
+verify_jwt = true
+
+[functions.ai-card-design]
+verify_jwt = true

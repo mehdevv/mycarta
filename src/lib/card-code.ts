@@ -32,6 +32,9 @@ export function formatCardCode(code: string): string {
   return `${normalized.slice(0, 3)} ${normalized.slice(3)}`;
 }
 
-export function cardPageUrl(code: string): string {
-  return appLink(`/card/${normalizeCardCode(code)}`);
+export function cardPageUrl(code: string, slug?: string): string {
+  const path = slug
+    ? `/${slug}/card/${normalizeCardCode(code)}`
+    : `/card/${normalizeCardCode(code)}`;
+  return appLink(path);
 }

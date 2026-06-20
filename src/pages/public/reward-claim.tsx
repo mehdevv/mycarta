@@ -6,7 +6,7 @@ import { CardContent } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
 import { celebrate, confettiBurst, fadeUp, rewardGranted, scaleIn, tapScale, vibrate } from "@/lib/motion";
 import ClientShell, { ClientCard, ClientLoading } from "@/components/client/client-shell";
-import Mascot from "@/components/brand/mascot";
+import BrandLogo from "@/components/brand/mascot";
 import { ArrowLeft, CheckCircle, Gift, QrCode, Sparkles } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { normalizeCardCode } from "@/lib/card-code";
@@ -148,7 +148,7 @@ export default function RewardClaim() {
         </Link>
 
         <motion.div variants={celebrate} initial="initial" animate="animate" className="text-center mb-6">
-          <Mascot role="client" size="md" className="mx-auto mb-4" float />
+          <BrandLogo role="client" size="md" className="mx-auto mb-4" float primaryColor={reward.primaryColor} alt={reward.businessName} />
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             {reward.businessName}
           </p>

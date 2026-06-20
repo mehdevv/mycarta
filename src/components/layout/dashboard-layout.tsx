@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Button, Drawer } from "@heroui/react";
+import { motion } from "framer-motion";
+import { Drawer } from "@heroui/react";
 import {
   Users,
   LayoutDashboard,
@@ -10,25 +11,57 @@ import {
   LogOut,
   Package,
   BarChart3,
-  Contact,
   ShieldAlert,
   Menu,
+  CreditCard,
+  PanelLeftClose,
+  PanelLeft,
+  Plug,
+  WalletCards,
+  Lock,
+  type LucideIcon,
 } from "lucide-react";
-import Mascot from "@/components/brand/mascot";
-import { APP_NAME } from "@/lib/app-name";
+import SidebarTrialStatus from "@/components/billing/sidebar-trial-status";
+import BrandLogo from "@/components/brand/mascot";
 import { useAuth } from "@/lib/auth";
 import { useLogout, useGetSettings } from "@/api";
+import { useShopBranding } from "@/hooks/use-branding";
+import { useShopSettingsRealtime } from "@/hooks/use-shop-settings-realtime";
+import { INTEGRATIONS_LOCKED } from "@/lib/integration-tutorials";
+import { headerItem, headerStagger, staggerContainer, staggerItem } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 
-const navItems = [
+import DashboardTour from "@/components/dashboard/dashboard-tour";
+
+const SIDEBAR_COLLAPSED_KEY = "dash-sidebar-collapsed";
+
+const TOUR_IDS: Record<string, string> = {
+  "/": "nav-overview",
+  "/clients": "nav-clients",
+  "/workers": "nav-workers",
+  "/settings": "nav-settings",
+  "/billing": "nav-billing",
+  "/ccard": "nav-ccard",
+  "/integrations": "nav-integrations",
+};
+
+const navItems: { label: string; path: string; icon: LucideIcon; locked?: boolean }[] = [
   { label: "Overview", path: "/", icon: LayoutDashboard },
   { label: "Analytics", path: "/analytics", icon: BarChart3 },
   { label: "Clients", path: "/clients", icon: Users },
-  { label: "Contacts", path: "/contacts", icon: Contact },
   { label: "Scans", path: "/scans", icon: QrCode },
   { label: "Fraud", path: "/fraud", icon: ShieldAlert },
   { label: "Rewards", path: "/rewards", icon: Gift },
   { label: "Products", path: "/products", icon: Package },
   { label: "Workers", path: "/workers", icon: Users },
+  { label: "Carte fidélité", path: "/ccard", icon: WalletCards },
+  {
+    label: "Intégrations",
+    path: "/integrations",
+    icon: Plug,
+    locked: INTEGRATIONS_LOCKED,
+  },
+  { label: "Billing", path: "/billing", icon: CreditCard },
   { label: "Settings", path: "/settings", icon: Settings },
 ];
 
@@ -36,128 +69,222 @@ function dashboardPath(path: string) {
   return path === "/" ? "/dashboard" : `/dashboard${path}`;
 }
 
+function BrandBlock() {
+  const { data: settings } = useGetSettings();
+  const branding = useShopBranding();
+
+  return (
+    <div className="dash-sidebar-brand">
+      <BrandLogo
+        role="admin"
+        size="sm"
+        animate={false}
+        logoUrl={branding.logoUrl}
+        alt={branding.businessName}
+        primaryColor={branding.primaryColor}
+      />
+      <div className="dash-sidebar-brand-text min-w-0 flex-1">
+        <h2>{settings?.businessName ?? branding.businessName}</h2>
+        <p>Tableau de bord</p>
+      </div>
+    </div>
+  );
+}
+
 function NavLinks({
   location,
   onNavigate,
+  animated = false,
+  collapsed = false,
 }: {
   location: string;
   onNavigate?: () => void;
+  animated?: boolean;
+  collapsed?: boolean;
 }) {
+  const links = navItems.map((item) => {
+    const href = item.path;
+    const active = !item.locked && location === dashboardPath(item.path);
+    const Icon = item.icon;
+    const tourId = TOUR_IDS[item.path];
+
+    const link = item.locked ? (
+      <span
+        key={item.path}
+        className="dash-nav-link dash-nav-link--locked"
+        title={collapsed ? `${item.label} — bientôt disponible` : "Bientôt disponible"}
+        aria-disabled="true"
+        {...(tourId ? { "data-tour": tourId } : {})}
+      >
+        <Icon strokeWidth={2} />
+        <span className="flex-1">{item.label}</span>
+        {!collapsed && <span className="dash-nav-soon">Bientôt</span>}
+        <Lock className="dash-nav-lock-icon" size={14} aria-hidden />
+      </span>
+    ) : (
+      <Link
+        key={item.path}
+        href={href}
+        onClick={onNavigate}
+        className={cn("dash-nav-link", active && "is-active")}
+        title={collapsed ? item.label : undefined}
+        {...(tourId ? { "data-tour": tourId } : {})}
+      >
+        <Icon strokeWidth={active ? 2.25 : 2} />
+        <span>{item.label}</span>
+      </Link>
+    );
+
+    return animated ? (
+      <motion.div key={item.path} variants={staggerItem}>
+        {link}
+      </motion.div>
+    ) : (
+      link
+    );
+  });
+
+  if (animated) {
+    return (
+      <motion.nav
+        className="dash-nav"
+        aria-label="Navigation principale"
+        variants={staggerContainer}
+        initial="initial"
+        animate="animate"
+      >
+        {links}
+      </motion.nav>
+    );
+  }
+
   return (
-    <nav className="flex flex-col gap-1 p-2">
-      {navItems.map((item) => {
-        const href = item.path;
-        const active = location === dashboardPath(item.path);
-        return (
-          <Link
-            key={item.path}
-            href={href}
-            onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-              active
-                ? "bg-primary text-white"
-                : "text-foreground hover:bg-muted"
-            }`}
-          >
-            <item.icon className="h-4 w-4 shrink-0" />
-            {item.label}
-          </Link>
-        );
-      })}
+    <nav className="dash-nav" aria-label="Navigation principale">
+      {links}
     </nav>
+  );
+}
+
+function SidebarFooter({ onLogout, collapsed }: { onLogout: () => void; collapsed?: boolean }) {
+  return (
+    <div className="dash-sidebar-footer">
+      <SidebarTrialStatus />
+      <button
+        type="button"
+        className="dash-logout-btn"
+        onClick={onLogout}
+        title={collapsed ? "Déconnexion" : undefined}
+      >
+        <LogOut size={16} />
+        <span>Déconnexion</span>
+      </button>
+    </div>
   );
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+  });
   const { logout, user } = useAuth();
   const logoutMutation = useLogout();
-  const { data: settings } = useGetSettings();
+  useShopSettingsRealtime();
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   const handleLogout = async () => {
     try {
       await logoutMutation.mutateAsync();
     } finally {
       logout();
-      setLocation("~/admin");
+      setLocation("~/shop");
     }
   };
 
-  const brand = (
-    <div className="flex items-center gap-3 p-4 border-b border-border">
-      <Mascot role="admin" size="sm" animate={false} />
-      <div className="min-w-0">
-        <h2 className="text-lg font-bold text-primary tracking-tight truncate">
-          {settings?.businessName ?? APP_NAME}
-        </h2>
-        <p className="text-xs text-muted-foreground">Admin dashboard</p>
-      </div>
-    </div>
-  );
+  const toggleSidebar = () => setSidebarCollapsed((c) => !c);
+
+  const currentPage = navItems.find((item) => location === dashboardPath(item.path));
 
   return (
-    <div className="flex min-h-screen w-full bg-muted/20">
-      <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-card">
-        {brand}
-        <div className="flex-1 overflow-y-auto">
-          <NavLinks location={location} />
-        </div>
-        <div className="p-2 border-t border-border">
-          <Button
-            variant="ghost"
-            fullWidth
-            className="justify-start text-destructive"
-            onPress={handleLogout}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
-        </div>
-      </aside>
+    <div className="dash-shell">
+      <div className="dash-layout">
+        <motion.aside
+          className={cn("dash-sidebar", sidebarCollapsed && "dash-sidebar--collapsed")}
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <BrandBlock />
+          <NavLinks location={location} animated collapsed={sidebarCollapsed} />
+          <SidebarFooter onLogout={handleLogout} collapsed={sidebarCollapsed} />
+        </motion.aside>
 
-      {mobileOpen && (
-      <Drawer isOpen={mobileOpen} onOpenChange={setMobileOpen}>
-        <Drawer.Backdrop>
-          <Drawer.Content placement="left" className="w-72 max-w-[85vw]">
-            <Drawer.Dialog>
-              <Drawer.Header>
-                <Drawer.Heading>Menu</Drawer.Heading>
-              </Drawer.Header>
-              <Drawer.Body className="p-0">
-                {brand}
-                <NavLinks location={location} onNavigate={() => setMobileOpen(false)} />
-              </Drawer.Body>
-              <Drawer.Footer>
-                <Button variant="ghost" fullWidth onPress={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
-              </Drawer.Footer>
-            </Drawer.Dialog>
-          </Drawer.Content>
-        </Drawer.Backdrop>
-      </Drawer>
-      )}
+        {mobileOpen && (
+          <Drawer isOpen={mobileOpen} onOpenChange={setMobileOpen}>
+            <Drawer.Backdrop>
+              <Drawer.Content placement="left" className="w-72 max-w-[85vw]">
+                <Drawer.Dialog>
+                  <Drawer.Header>
+                    <Drawer.Heading>Menu</Drawer.Heading>
+                  </Drawer.Header>
+                  <Drawer.Body className="p-0 flex flex-col">
+                    <BrandBlock />
+                    <NavLinks location={location} onNavigate={() => setMobileOpen(false)} />
+                  </Drawer.Body>
+                  <Drawer.Footer className="flex-col gap-1 p-0">
+                    <SidebarFooter onLogout={handleLogout} />
+                  </Drawer.Footer>
+                </Drawer.Dialog>
+              </Drawer.Content>
+            </Drawer.Backdrop>
+          </Drawer>
+        )}
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b border-border bg-card flex items-center px-4 md:px-6 sticky top-0 z-10 shrink-0">
-          <Button
-            variant="ghost"
-            className="lg:hidden -ml-1 mr-2 min-h-10 min-w-10"
-            onPress={() => setMobileOpen(true)}
-            aria-label="Open navigation menu"
+        <div className="dash-main">
+          <motion.header
+            className="dash-topbar"
+            variants={headerStagger}
+            initial="initial"
+            animate="animate"
           >
-            <Menu className="h-5 w-5" aria-hidden="true" />
-          </Button>
-          <div className="ml-auto flex items-center gap-4">
-            <span className="text-sm font-medium text-foreground">{user?.fullName}</span>
-          </div>
-        </header>
-        <main id="main-content" className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
-          <div className="mx-auto max-w-6xl w-full">{children}</div>
-        </main>
+            <button
+              type="button"
+              className="dash-menu-btn"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Ouvrir le menu"
+            >
+              <Menu size={20} />
+            </button>
+            <button
+              type="button"
+              className="dash-sidebar-toggle-btn"
+              onClick={toggleSidebar}
+              aria-label={sidebarCollapsed ? "Agrandir le menu" : "Réduire le menu"}
+              title={sidebarCollapsed ? "Agrandir le menu" : "Réduire le menu"}
+            >
+              {sidebarCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+            </button>
+            <div className="min-w-0 flex-1">
+              <motion.p className="dash-topbar-title" variants={headerItem}>
+                {currentPage?.label ?? "Dashboard"}
+              </motion.p>
+              <motion.p className="dash-topbar-sub" variants={headerItem}>
+                {user?.fullName}
+              </motion.p>
+            </div>
+          </motion.header>
+
+          <main id="main-content" className="dash-content">
+            <div className="dash-content-inner">{children}</div>
+          </main>
+        </div>
       </div>
+      <DashboardTour />
     </div>
   );
 }

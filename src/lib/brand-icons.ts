@@ -1,22 +1,24 @@
+import { CreditCard, LayoutDashboard, ScanLine, type LucideIcon } from "lucide-react";
+
 export type BrandRole = "admin" | "employee" | "client";
 
-export const BRAND_ICONS: Record<
+export const BRAND_ROLE_META: Record<
   BrandRole,
-  { src: string; alt: string; label: string }
+  { icon: LucideIcon; label: string; fallbackAlt: string }
 > = {
   admin: {
-    src: "/admin-icon.png",
-    alt: "Ice King admin mascot",
+    icon: LayoutDashboard,
     label: "Admin",
+    fallbackAlt: "Admin",
   },
   employee: {
-    src: "/employee-icon.png",
-    alt: "Ice King employee mascot",
+    icon: ScanLine,
     label: "Staff",
+    fallbackAlt: "Staff",
   },
   client: {
-    src: "/client-icon.png",
-    alt: "Ice King loyalty mascot",
+    icon: CreditCard,
     label: "Member",
+    fallbackAlt: "Loyalty member",
   },
 };

@@ -1,32 +1,50 @@
 import { useRef } from "react";
 import { useRoute, Link } from "wouter";
-import { useGetClientCard } from "@/api";
+import { useGetClientCard, useGetTenantBySlug } from "@/api";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Gift, ChevronRight, Clock } from "lucide-react";
 import { parseStampMilestones } from "@/lib/stamp-milestones";
-import { QRCodeSVG } from "qrcode.react";
 import { motion } from "framer-motion";
 import { fadeUp, scaleIn, vibrate, cardReveal, headerStagger, headerItem } from "@/lib/motion";
 import ClientShell, { ClientLoading } from "@/components/client/client-shell";
-import Mascot from "@/components/brand/mascot";
-import ClientStampGrid from "@/components/client/stamp-grid";
+import BrandLogo from "@/components/brand/mascot";
+import CardTemplateBody from "@/components/fidelity/card-template-body";
 import CardLinkBar from "@/components/client/card-link-bar";
 import { cardPageUrl, normalizeCardCode } from "@/lib/card-code";
 import { nextMilestoneHintText } from "@/lib/client-i18n";
 import { useClientI18n } from "@/hooks/use-client-i18n";
 import { useEffect } from "react";
-
-const FIDELITY_CARD_BG = "/fidelity-card-bg.png";
+import { useShopBranding, normalizeAssetUrl, resolveBusinessLogo } from "@/hooks/use-branding";
+import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
+import { PLATFORM } from "@/lib/platform";
 
 export default function CardView() {
-  const [, params] = useRoute("/card/:code");
-  const code = params?.code ? normalizeCardCode(params.code) : "";
+  const [, slugParams] = useRoute("/:slug/card/:code");
+  const [, legacyParams] = useRoute("/card/:code");
+  const tenantSlug = slugParams?.slug ?? "";
+  const code = (slugParams?.code ?? legacyParams?.code)
+    ? normalizeCardCode(slugParams?.code ?? legacyParams?.code ?? "")
+    : "";
   const cardRef = useRef<HTMLDivElement>(null);
 
+  const { data: tenantMeta, isLoading: tenantMetaLoading } = useGetTenantBySlug(tenantSlug || undefined);
+  const tenantId = (tenantMeta?.id as string) ?? undefined;
+
   const { t, lang } = useClientI18n();
+  const branding = useShopBranding(tenantSlug || undefined);
+
+  const businessLogo = resolveBusinessLogo(
+    branding.logoUrl,
+    tenantMeta?.logoUrl as string | undefined,
+  );
+  const businessName =
+    branding.businessName !== PLATFORM.name
+      ? branding.businessName
+      : String(tenantMeta?.businessName ?? tenantMeta?.name ?? branding.businessName);
 
   const { data: card, isLoading, error } = useGetClientCard(code, {
     query: { enabled: !!code },
+    tenantId,
   });
 
   useEffect(() => {
@@ -43,7 +61,18 @@ export default function CardView() {
     );
   }
 
-  if (isLoading) return <ClientLoading />;
+  const brandingPending = branding.isLoading && !businessLogo;
+  const tenantPending = !!tenantSlug && tenantMetaLoading && !businessLogo;
+
+  if (isLoading || brandingPending || tenantPending) {
+    return (
+      <ClientLoading
+        logoUrl={businessLogo}
+        businessName={businessName}
+        primaryColor={branding.primaryColor}
+      />
+    );
+  }
 
   if (error || !card) {
     return (
@@ -74,8 +103,13 @@ export default function CardView() {
   const upcomingMilestones = milestones.filter((m) => m.position > card.currentCycleStamps);
   const showRewardsSection = rewards.length > 0 || upcomingMilestones.length > 0;
 
+  const cardBg = normalizeAssetUrl(card.cardTemplateUrl) || branding.cardTemplateUrl;
+  const secondary = branding.secondaryColor;
+  const cardDesignId =
+    card.cardDesignId ?? branding.cardDesignId ?? DEFAULT_CARD_DESIGN_ID;
+
   return (
-    <ClientShell primaryColor={card.primaryColor} secondaryColor="#0E9F6E">
+    <ClientShell primaryColor={card.primaryColor} secondaryColor={secondary}>
       <motion.div
         className="flex flex-col min-h-[100dvh] max-w-md mx-auto pb-6"
         variants={fadeUp}
@@ -89,7 +123,15 @@ export default function CardView() {
           animate="animate"
         >
           <motion.div variants={headerItem} className="flex items-center gap-2.5 min-w-0">
-            <Mascot role="client" size="xs" animate={false} className="shrink-0" />
+            <BrandLogo
+              role="client"
+              size="xs"
+              animate={false}
+              className="shrink-0"
+              logoUrl={businessLogo ?? branding.logoUrl}
+              alt={card.businessName}
+              primaryColor={card.primaryColor}
+            />
             <div className="min-w-0">
               <h1 className="text-lg font-bold leading-tight truncate text-foreground drop-shadow-sm">
                 {card.clientName}
@@ -110,69 +152,25 @@ export default function CardView() {
         <div className="px-5 flex-1">
           <motion.div
             ref={cardRef}
-            className="relative w-full rounded-3xl overflow-hidden border border-white/70 shadow-[0_8px_32px_rgba(15,23,42,0.12)]"
             variants={cardReveal}
             initial="initial"
             animate="animate"
           >
-            <div
-              className="absolute inset-0 bg-cover bg-center pointer-events-none"
-              style={{
-                backgroundImage: `url(${FIDELITY_CARD_BG})`,
-                opacity: 0.75,
-              }}
+            <CardTemplateBody
+              cardDesignId={cardDesignId}
+              primaryColor={card.primaryColor}
+              secondaryColor={secondary}
+              cardBg={cardBg}
+              qrValue={cardPageUrl(card.cardCode)}
+              stampThreshold={card.stampThreshold}
+              currentStamps={card.currentCycleStamps}
+              milestones={milestones}
+              progress={progress}
+              hint={hint}
+              progressLabel={t("progress")}
+              footerHint={t("showQrHint")}
+              animated
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-white/55 via-white/35 to-white/65 pointer-events-none" />
-
-            <div className="relative p-5 flex justify-center">
-              <motion.div
-                className="bg-white p-3.5 rounded-2xl shadow-lg border border-gray-200/90"
-                initial={{ opacity: 0, scale: 0.94 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: "spring", stiffness: 340, damping: 28, delay: 0.12 }}
-              >
-                <QRCodeSVG value={cardPageUrl(card.cardCode)} size={188} level="H" fgColor="#111" />
-              </motion.div>
-            </div>
-
-            <div className="relative mx-4 mb-4 rounded-2xl bg-white/95 backdrop-blur-md border border-white/80 shadow-sm px-4 py-4">
-              <div className="flex justify-between items-end mb-2">
-                <span className="text-sm font-semibold text-gray-700">{t("progress")}</span>
-                <span className="text-lg font-bold tabular-nums" style={{ color: card.primaryColor }}>
-                  {card.currentCycleStamps}/{card.stampThreshold}
-                </span>
-              </div>
-
-              <div className="h-2.5 rounded-full bg-gray-200/80 overflow-hidden mb-4 shadow-inner">
-                <motion.div
-                  className="h-full rounded-full shadow-sm"
-                  style={{ backgroundColor: card.primaryColor }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
-                  transition={{ duration: 1, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                />
-              </div>
-
-              {hint && (
-                <motion.p
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5, duration: 0.35 }}
-                  className="text-xs text-center font-semibold mb-3 px-3 py-2 rounded-xl bg-amber-50 text-amber-950 border border-amber-200/80 shadow-sm"
-                >
-                  {hint}
-                </motion.p>
-              )}
-
-              <ClientStampGrid
-                stampThreshold={card.stampThreshold}
-                currentStamps={card.currentCycleStamps}
-                milestones={milestones}
-                primaryColor={card.primaryColor}
-              />
-
-              <p className="text-center text-xs font-medium text-gray-600 mt-5">{t("showQrHint")}</p>
-            </div>
           </motion.div>
 
           {showRewardsSection && (

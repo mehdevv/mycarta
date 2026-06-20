@@ -33,12 +33,14 @@ function extractToken(raw: string): string {
 async function findClientByToken(
   admin: ReturnType<typeof createClient>,
   token: string,
+  tenantId: string,
 ) {
   const lookup = extractToken(token);
 
   const { data: byCode } = await admin
     .from("clients")
     .select("*")
+    .eq("tenant_id", tenantId)
     .eq("card_code", lookup)
     .maybeSingle();
   if (byCode) return byCode;
@@ -47,6 +49,7 @@ async function findClientByToken(
     const { data: byUuid } = await admin
       .from("clients")
       .select("*")
+      .eq("tenant_id", tenantId)
       .eq("fidelity_qr_token", lookup)
       .maybeSingle();
     if (byUuid) return byUuid;
@@ -137,13 +140,15 @@ Deno.serve(async (req) => {
 
     const { data: worker } = await supabase
       .from("profiles")
-      .select("id, role, is_active, email")
+      .select("id, role, is_active, email, tenant_id")
       .eq("id", user.id)
       .single();
 
-    if (!worker || worker.role !== "worker" || !worker.is_active) {
+    if (!worker || worker.role !== "worker" || !worker.is_active || !worker.tenant_id) {
       return jsonResponse({ error: "Worker not authorized" }, 403);
     }
+
+    const tenantId = worker.tenant_id as string;
 
     const { clientQrToken } = await req.json();
     const token = extractToken(clientQrToken);
@@ -153,13 +158,30 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { data: settings } = await admin.from("shop_settings").select("*").limit(1).single();
-    const client = await findClientByToken(admin, token);
+    const { data: limitsRaw } = await admin.rpc("check_plan_limits", {
+      p_tenant_id: tenantId,
+      p_check: "tenant_scans_today",
+    });
+    const limits = limitsRaw as { allowed?: boolean; reason?: string; upgrade_required?: boolean };
+    if (!limits?.allowed) {
+      return jsonResponse(
+        { error: limits.reason ?? "plan_limit", upgradeRequired: limits.upgrade_required ?? true },
+        402,
+      );
+    }
+
+    const { data: settings } = await admin
+      .from("shop_settings")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .single();
+    const client = await findClientByToken(admin, token, tenantId);
 
     if (!client) return jsonResponse({ error: "Client not found" }, 404);
 
     if (client.is_blocked) {
       await admin.from("scan_logs").insert({
+        tenant_id: tenantId,
         client_id: client.id,
         worker_id: worker.id,
         scan_type: "purchase",
@@ -177,6 +199,7 @@ Deno.serve(async (req) => {
       client.email.toLowerCase() === worker.email.toLowerCase()
     ) {
       await admin.from("scan_logs").insert({
+        tenant_id: tenantId,
         client_id: client.id,
         worker_id: worker.id,
         scan_type: "purchase",
@@ -197,6 +220,7 @@ Deno.serve(async (req) => {
 
     if ((rapidScans ?? 0) > 0) {
       await admin.from("scan_logs").insert({
+        tenant_id: tenantId,
         client_id: client.id,
         worker_id: worker.id,
         scan_type: "purchase",
@@ -220,6 +244,7 @@ Deno.serve(async (req) => {
 
     if ((todayScans ?? 0) >= (settings?.max_scans_per_day ?? 2)) {
       await admin.from("scan_logs").insert({
+        tenant_id: tenantId,
         client_id: client.id,
         worker_id: worker.id,
         scan_type: "purchase",
@@ -240,6 +265,7 @@ Deno.serve(async (req) => {
 
     if ((recentDup ?? 0) > 0) {
       await admin.from("scan_logs").insert({
+        tenant_id: tenantId,
         client_id: client.id,
         worker_id: worker.id,
         scan_type: "purchase",
@@ -254,12 +280,14 @@ Deno.serve(async (req) => {
       const { data: products } = await admin
         .from("products")
         .select("id, name, price, category")
+        .eq("tenant_id", tenantId)
         .eq("is_active", true)
         .order("name");
 
       const { data: pendingScan } = await admin
         .from("scan_logs")
         .insert({
+          tenant_id: tenantId,
           client_id: client.id,
           worker_id: worker.id,
           scan_type: "purchase",
@@ -302,6 +330,7 @@ Deno.serve(async (req) => {
     const { data: scan } = await admin
       .from("scan_logs")
       .insert({
+        tenant_id: tenantId,
         client_id: client.id,
         worker_id: worker.id,
         scan_type: "purchase",
@@ -314,6 +343,7 @@ Deno.serve(async (req) => {
 
     if (outcome.rewardTriggered && scan) {
       const { error: rewardError } = await admin.from("rewards").insert({
+        tenant_id: tenantId,
         client_id: client.id,
         scan_log_id: scan.id,
         reward_description: outcome.rewardDescription!,

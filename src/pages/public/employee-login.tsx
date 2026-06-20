@@ -2,25 +2,33 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useLocation } from "wouter";
-import { useLogin } from "@/api";
+import { useLocation, useRoute } from "wouter";
+import { useLogin, useGetTenantBySlug } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import AuthShell from "@/components/auth/auth-shell";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { useShopBranding } from "@/hooks/use-branding";
+import { Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address."),
-  password: z.string().min(1, "Password is required."),
+  email: z.string().email("Adresse email invalide."),
+  password: z.string().min(1, "Mot de passe requis."),
 });
 
 export default function EmployeeLogin() {
+  const [, slugParams] = useRoute("/:slug/employee");
+  const tenantSlug = slugParams?.slug ?? "";
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login, logout, isAuthenticated, user } = useAuth();
   const loginMutation = useLogin();
+  const { data: tenantMeta, isLoading: tenantLoading } = useGetTenantBySlug(tenantSlug || undefined);
+  const branding = useShopBranding(tenantSlug || undefined);
+
+  const tenantId = (tenantMeta?.id as string) ?? undefined;
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -30,39 +38,83 @@ export default function EmployeeLogin() {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
     if (user.role === "worker") {
+      if (tenantId && user.tenantId && user.tenantId !== tenantId) {
+        logout();
+        toast({
+          title: "Compte incorrect",
+          description: "Ce compte appartient à une autre boutique.",
+          variant: "destructive",
+        });
+        return;
+      }
       setLocation("~/worker");
       return;
     }
     logout();
     toast({
-      title: "Admin account detected",
-      description: "Please sign in at the admin portal.",
+      title: "Compte administrateur détecté",
+      description: "Connectez-vous via l'espace commerçant.",
       variant: "destructive",
     });
-    setLocation("~/admin");
-  }, [isAuthenticated, user, setLocation, logout, toast]);
+    setLocation("~/shop");
+  }, [isAuthenticated, user, tenantId, setLocation, logout, toast]);
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
+    if (!tenantSlug || !tenantId) {
+      toast({ title: "Boutique introuvable", variant: "destructive" });
+      return;
+    }
     try {
       const response = await loginMutation.mutateAsync({ data: values });
       login(response.accessToken);
-      toast({ title: "Welcome back" });
+      toast({ title: "Bon retour !" });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Invalid credentials";
-      toast({ title: "Sign in failed", description: message, variant: "destructive" });
+      const message = error instanceof Error ? error.message : "Identifiants incorrects";
+      toast({ title: "Connexion échouée", description: message, variant: "destructive" });
     }
   };
+
+  if (tenantSlug && tenantLoading) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center p-4">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (tenantSlug && !tenantId) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center p-4 text-center">
+        <div>
+          <h1 className="text-xl font-semibold">Boutique introuvable</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Vérifiez le lien de connexion fourni par votre employeur.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (isAuthenticated) {
     return (
       <div className="min-h-screen bg-muted flex items-center justify-center p-4">
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">Chargement…</p>
       </div>
     );
   }
 
   return (
-    <AuthShell role="employee" title="Employee Sign In" description="Staff access to scan and manage customer cards">
+    <AuthShell
+      role="employee"
+      title="Connexion employé"
+      description={
+        branding.businessName
+          ? `Accès équipe — ${branding.businessName}`
+          : "Accès équipe pour scanner les cartes clients"
+      }
+      logoUrl={branding.logoUrl}
+      primaryColor={branding.primaryColor}
+    >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
@@ -72,7 +124,7 @@ export default function EmployeeLogin() {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="staff@example.com" {...field} />
+                  <Input type="email" placeholder="employe@exemple.com" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -83,7 +135,7 @@ export default function EmployeeLogin() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel>Mot de passe</FormLabel>
                 <FormControl>
                   <Input type="password" placeholder="••••••••" {...field} />
                 </FormControl>
@@ -92,7 +144,7 @@ export default function EmployeeLogin() {
             )}
           />
           <Button type="submit" className="w-full mt-2" size="lg" disabled={loginMutation.isPending}>
-            {loginMutation.isPending ? "Signing in..." : "Sign In"}
+            {loginMutation.isPending ? "Connexion…" : "Se connecter"}
           </Button>
         </form>
       </Form>

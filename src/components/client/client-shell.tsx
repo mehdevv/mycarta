@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import Mascot from "@/components/brand/mascot";
+import BrandLogo from "@/components/brand/mascot";
 import { fadeUp } from "@/lib/motion";
 import { useClientI18n } from "@/hooks/use-client-i18n";
 
@@ -59,13 +59,38 @@ export function ClientCard({
   );
 }
 
-export function ClientLoading({ label }: { label?: string }) {
+export function ClientLoading({
+  label,
+  logoUrl,
+  businessName,
+  primaryColor,
+}: {
+  label?: string;
+  logoUrl?: string | null;
+  businessName?: string;
+  primaryColor?: string;
+}) {
   const { t } = useClientI18n();
   const text = label ?? t("loadingCard");
   return (
-    <ClientShell>
+    <ClientShell primaryColor={primaryColor}>
       <div className="flex min-h-[100dvh] flex-col items-center justify-center p-6 max-w-md mx-auto text-center">
-        <Mascot role="client" size="lg" float />
+        {logoUrl ? (
+          <BrandLogo
+            role="client"
+            size="lg"
+            float
+            logoUrl={logoUrl}
+            alt={businessName}
+            primaryColor={primaryColor}
+            animate={false}
+          />
+        ) : (
+          <div
+            className="h-28 w-28 rounded-xl bg-white/50 border border-white/70 shadow-sm animate-pulse"
+            aria-hidden
+          />
+        )}
         <p className="text-sm text-muted-foreground mt-6 animate-pulse">{text}</p>
       </div>
     </ClientShell>

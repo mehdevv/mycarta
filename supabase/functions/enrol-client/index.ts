@@ -1,7 +1,6 @@
-// Paste this ENTIRE file into Supabase Dashboard → Edge Functions → enrol-client
-// Endpoint: {VITE_SUPABASE_URL}/functions/v1/enrol-client — JWT: OFF
-// Local app: http://localhost:5173/client — All links: supabase/functions/LINKS.md
+// Paste into Supabase Dashboard → Edge Functions → enrol-client — JWT: OFF
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { checkPlanLimits, planDeniedResponse, resolveTenantBySlug } from "../_shared/plan-limits.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,8 +25,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { fullName, phone, email } = await req.json();
+    const { fullName, phone, email, slug, tenantSlug } = await req.json();
+    const tenantSlugValue = slug ?? tenantSlug;
 
+    if (!tenantSlugValue) {
+      return jsonResponse({ error: "slug is required" }, 400);
+    }
     if (!fullName || typeof fullName !== "string") {
       return jsonResponse({ error: "fullName is required" }, 400);
     }
@@ -41,9 +44,21 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    const tenant = await resolveTenantBySlug(admin, tenantSlugValue);
+    if (!tenant) return jsonResponse({ error: "Shop not found" }, 404);
+
+    const limits = await checkPlanLimits(admin, tenant.id, "enrol_client");
+    if (!limits.allowed) {
+      return new Response(
+        JSON.stringify({ error: limits.reason, upgradeRequired: limits.upgrade_required }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const { data: existing } = await admin
       .from("clients")
       .select("card_code, full_name, phone")
+      .eq("tenant_id", tenant.id)
       .eq("phone", normalizedPhone)
       .maybeSingle();
 
@@ -53,12 +68,14 @@ Deno.serve(async (req) => {
         fullName: existing.full_name,
         phone: existing.phone,
         existing: true,
+        tenantSlug: tenant.slug,
       });
     }
 
     const { data: client, error } = await admin
       .from("clients")
       .insert({
+        tenant_id: tenant.id,
         full_name: fullName.trim(),
         phone: normalizedPhone,
         email: email?.trim() || null,
@@ -73,6 +90,7 @@ Deno.serve(async (req) => {
       fullName: client.full_name,
       phone: client.phone,
       existing: false,
+      tenantSlug: tenant.slug,
     });
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);

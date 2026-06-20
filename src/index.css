@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "./card-templates.css";
+@import "./landing.css";
+@import "./dashboard.css";
+@import "./platform.css";
 @import "@heroui/styles";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";

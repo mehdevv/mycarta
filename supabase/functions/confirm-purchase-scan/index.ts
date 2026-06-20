@@ -95,12 +95,18 @@ Deno.serve(async (req) => {
 
     const scanRow = scan as { clients: Record<string, unknown> };
     const client = scanRow.clients;
-    const { data: settings } = await admin.from("shop_settings").select("*").limit(1).single();
+    const tenantId = scan.tenant_id as string;
+    const { data: settings } = await admin
+      .from("shop_settings")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .single();
     const threshold = settings?.stamp_threshold ?? 9;
     const milestones = parseMilestones(settings?.stamp_milestones);
 
     for (const item of products ?? []) {
       await admin.from("scan_products").insert({
+        tenant_id: tenantId,
         scan_log_id: pendingScanId,
         product_id: item.productId,
         quantity: item.quantity ?? 1,
@@ -126,6 +132,7 @@ Deno.serve(async (req) => {
 
     if (outcome.rewardTriggered) {
       const { error: rewardError } = await admin.from("rewards").insert({
+        tenant_id: tenantId,
         client_id: client.id,
         scan_log_id: pendingScanId,
         reward_description: outcome.rewardDescription!,

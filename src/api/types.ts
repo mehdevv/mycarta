@@ -1,4 +1,4 @@
-export type UserRole = "owner" | "worker";
+export type UserRole = "owner" | "worker" | "super_admin";
 
 export interface User {
   id: string;
@@ -6,14 +6,17 @@ export interface User {
   fullName: string;
   role: UserRole;
   isActive: boolean;
+  tenantId?: string | null;
   workerQrToken?: string;
 }
 
 export interface ShopSettings {
   id: string;
+  tenantId: string;
   businessName: string;
   logoUrl: string | null;
   cardTemplateUrl: string | null;
+  cardDesignId: string;
   primaryColor: string;
   secondaryColor: string;
   currency: string;
@@ -30,6 +33,7 @@ export interface ShopSettings {
   whatsappConfigured?: boolean;
   emailConfigured?: boolean;
   clientLanguage: "fr" | "en";
+  updatedAt: string;
 }
 
 export interface Client {
@@ -91,6 +95,7 @@ export interface ClientCard {
   primaryColor: string;
   cardUrl: string | null;
   cardTemplateUrl: string | null;
+  cardDesignId?: string | null;
   stampThreshold: number;
   currentCycleStamps: number;
   cardCode: string;

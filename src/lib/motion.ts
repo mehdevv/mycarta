@@ -9,9 +9,9 @@ export const pageTransition: Transition = reducedMotion
   : { duration: 0.2, ease: "easeInOut" };
 
 export const pageVariants: Variants = {
-  initial: { opacity: reducedMotion ? 1 : 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: reducedMotion ? 1 : 0 },
+  initial: { opacity: reducedMotion ? 1 : 0, y: reducedMotion ? 0 : 8 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } },
+  exit: { opacity: reducedMotion ? 1 : 0, y: reducedMotion ? 0 : -6, transition: { duration: 0.18 } },
 };
 
 export const fadeUp: Variants = {

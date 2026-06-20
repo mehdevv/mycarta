@@ -1,7 +1,6 @@
-// Paste this ENTIRE file into Supabase Dashboard → Edge Functions → create-worker
-// Endpoint: {VITE_SUPABASE_URL}/functions/v1/create-worker — JWT: ON
-// Local app: http://localhost:5173/dashboard — All links: supabase/functions/LINKS.md
+// Paste into Supabase Dashboard → Edge Functions → create-worker — JWT: ON
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { checkPlanLimits } from "../_shared/plan-limits.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,9 +22,7 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return jsonResponse({ error: "Unauthorized" }, 401);
-    }
+    if (!authHeader) return jsonResponse({ error: "Unauthorized" }, 401);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -38,16 +35,15 @@ Deno.serve(async (req) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, tenant_id")
       .eq("id", user.id)
       .single();
 
-    if (profile?.role !== "owner") {
+    if (profile?.role !== "owner" || !profile.tenant_id) {
       return jsonResponse({ error: "Forbidden" }, 403);
     }
 
     const { fullName, email, password } = await req.json();
-
     if (!fullName || !email || !password) {
       return jsonResponse({ error: "fullName, email, and password are required" }, 400);
     }
@@ -56,6 +52,14 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    const limits = await checkPlanLimits(admin, profile.tenant_id, "add_worker");
+    if (!limits.allowed) {
+      return jsonResponse(
+        { error: limits.reason, upgradeRequired: limits.upgrade_required },
+        403,
+      );
+    }
 
     const { data: authUser, error: authError } = await admin.auth.admin.createUser({
       email,
@@ -67,6 +71,7 @@ Deno.serve(async (req) => {
 
     const { error: profileError } = await admin.from("profiles").insert({
       id: authUser.user.id,
+      tenant_id: profile.tenant_id,
       full_name: fullName,
       email,
       role: "worker",

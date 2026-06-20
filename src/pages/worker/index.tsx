@@ -4,18 +4,27 @@ import { useWorkerTodayScans } from "@/api";
 import { QrCode, UserCircle, Star } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { motion } from "framer-motion";
-import Mascot from "@/components/brand/mascot";
+import BrandLogo from "@/components/brand/mascot";
 import { fadeUp } from "@/lib/motion";
+import { useShopBranding } from "@/hooks/use-branding";
 
 export default function WorkerHome() {
   const { user } = useAuth();
   const { data } = useWorkerTodayScans();
   const [, navigate] = useLocation();
+  const branding = useShopBranding();
 
   return (
     <motion.div className="flex-1 flex flex-col p-4 bg-muted/30" variants={fadeUp} initial="initial" animate="animate">
       <div className="mb-6 flex items-start gap-4">
-        <Mascot role="employee" size="md" float />
+        <BrandLogo
+          role="employee"
+          size="md"
+          float
+          logoUrl={branding.logoUrl}
+          alt={branding.businessName}
+          primaryColor={branding.primaryColor}
+        />
         <div className="pt-1">
           <h2 className="text-2xl font-bold tracking-tight text-foreground">
             Hello, {user?.fullName?.split(" ")[0]}

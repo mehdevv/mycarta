@@ -1,9 +1,10 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@heroui/react";
 import { LogOut, Home, QrCode, History } from "lucide-react";
-import Mascot from "@/components/brand/mascot";
+import BrandLogo from "@/components/brand/mascot";
 import { useAuth } from "@/lib/auth";
 import { useLogout } from "@/api";
+import { useShopBranding } from "@/hooks/use-branding";
 
 const tabs = [
   { path: "/", label: "Home", icon: Home },
@@ -20,6 +21,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
   const [location, setLocation] = useLocation();
   const { logout } = useAuth();
   const logoutMutation = useLogout();
+  const branding = useShopBranding();
 
   const handleLogout = async () => {
     try {
@@ -33,8 +35,15 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
   return (
     <div className="flex flex-col min-h-[100dvh] bg-background">
       <header className="h-14 border-b border-border bg-card flex items-center gap-2 px-4 sticky top-0 z-10 shrink-0 shadow-sm">
-        <Mascot role="employee" size="xs" animate={false} />
-        <h1 className="text-lg font-bold text-primary tracking-tight">Iceking Card</h1>
+        <BrandLogo
+          role="employee"
+          size="xs"
+          animate={false}
+          logoUrl={branding.logoUrl}
+          alt={branding.businessName}
+          primaryColor={branding.primaryColor}
+        />
+        <h1 className="text-lg font-bold text-primary tracking-tight truncate">{branding.businessName}</h1>
         <div className="ml-auto">
           <Button
             variant="ghost"

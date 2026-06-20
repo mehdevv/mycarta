@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useListWorkers, useCreateWorker, useUpdateWorker, useDeleteWorker, useGetWorkerQr } from "@/api";
+import { useGetTrialStatus } from "@/api/tenant";
+import { getBrandingLimits } from "@/lib/branding-limits";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -11,10 +13,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Plus, Edit2, QrCode, Power, PowerOff, Trash2 } from "lucide-react";
+import { Plus, Edit2, QrCode, Power, PowerOff, Trash2, Copy, Check } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListWorkersQueryKey } from "@/api";
 import { QRCodeSVG } from "qrcode.react";
+import { useCurrentTenant } from "@/lib/tenant-context";
+import { tenantEmployeeLink } from "@/lib/links";
 
 const workerSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters."),
@@ -24,8 +28,15 @@ const workerSchema = z.object({
 
 export default function Workers() {
   const { data: workers, isLoading } = useListWorkers();
+  const { data: trialStatus } = useGetTrialStatus();
+  const { slug } = useCurrentTenant();
+  const planId = trialStatus?.planId ?? "trial";
+  const limits = getBrandingLimits(planId as "trial");
+  const activeWorkers = workers?.filter((w) => w.isActive).length ?? 0;
+  const atWorkerLimit = limits.workerLimit !== null && activeWorkers >= limits.workerLimit;
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [qrWorkerId, setQrWorkerId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const qrWorker = workers?.find((w) => w.id === qrWorkerId);
   
   const createWorker = useCreateWorker();
@@ -34,6 +45,16 @@ export default function Workers() {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const employeeLink = slug ? tenantEmployeeLink(slug) : "";
+
+  const copyEmployeeLink = async () => {
+    if (!employeeLink) return;
+    await navigator.clipboard.writeText(employeeLink);
+    setCopied(true);
+    toast({ title: "Lien copié" });
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const form = useForm<z.infer<typeof workerSchema>>({
     resolver: zodResolver(workerSchema),
@@ -80,12 +101,34 @@ export default function Workers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Workers</h1>
-        <Button onClick={() => setIsAddOpen(true)}>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Workers</h1>
+          {limits.workerLimit !== null && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {activeWorkers} / {limits.workerLimit} workers actifs (plan {limits.planLabel})
+            </p>
+          )}
+        </div>
+        <Button onClick={() => setIsAddOpen(true)} disabled={atWorkerLimit}>
           <Plus className="h-4 w-4 mr-2" /> Add Worker
         </Button>
       </div>
+
+      {employeeLink && (
+        <Card>
+          <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">Lien de connexion employés</p>
+              <p className="font-mono text-xs text-muted-foreground break-all mt-1">{employeeLink}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => void copyEmployeeLink()}>
+              {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+              Copier
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="p-0">

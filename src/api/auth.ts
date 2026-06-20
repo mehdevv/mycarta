@@ -29,8 +29,9 @@ export function useGetMe(options?: { query?: { enabled?: boolean; retry?: boolea
         id: user.id,
         email: user.email ?? "",
         fullName: profile.full_name,
-        role: profile.role,
+        role: profile.role as User["role"],
         isActive: profile.is_active,
+        tenantId: profile.tenant_id ?? null,
         workerQrToken: profile.worker_qr_token,
       };
     },

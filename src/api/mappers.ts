@@ -8,14 +8,20 @@ function toCamel<T extends Record<string, unknown>>(row: T): Record<string, unkn
 }
 
 import { parseStampMilestones } from "@/lib/stamp-milestones";
+import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
 
 export function mapSettings(row: Record<string, unknown>) {
   const r = toCamel(row);
   return {
     id: r.id as string,
+    tenantId: r.tenantId as string,
     businessName: r.businessName as string,
     logoUrl: (r.logoUrl as string) ?? null,
     cardTemplateUrl: (r.cardTemplateUrl as string) ?? null,
+    cardDesignId:
+      r.cardDesignId != null && String(r.cardDesignId).trim() !== ""
+        ? String(r.cardDesignId)
+        : DEFAULT_CARD_DESIGN_ID,
     primaryColor: r.primaryColor as string,
     secondaryColor: r.secondaryColor as string,
     currency: r.currency as string,
@@ -32,6 +38,7 @@ export function mapSettings(row: Record<string, unknown>) {
     whatsappConfigured: Boolean(r.whatsappToken && r.whatsappPhoneId),
     emailConfigured: Boolean(r.emailSender),
     clientLanguage: r.clientLanguage === "en" ? "en" : "fr",
+    updatedAt: String(r.updatedAt ?? r.createdAt ?? new Date().toISOString()),
   };
 }
 
@@ -93,6 +100,10 @@ export function mapClientCard(raw: Record<string, unknown>) {
     primaryColor: String(r.primaryColor ?? "#1A56DB"),
     cardUrl: (r.cardUrl as string) ?? null,
     cardTemplateUrl: (r.cardTemplateUrl as string) ?? null,
+    cardDesignId:
+      r.cardDesignId != null && String(r.cardDesignId).trim() !== ""
+        ? String(r.cardDesignId)
+        : undefined,
     stampThreshold: Number(r.stampThreshold ?? 9),
     currentCycleStamps: Number(r.currentCycleStamps ?? 0),
     cardCode: String(r.cardCode ?? ""),

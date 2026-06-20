@@ -8,10 +8,11 @@ const DEFAULT_LOCAL_ORIGIN = "http://localhost:5173";
 export const APP_PATHS = {
   home: "/",
   client: "/client",
-  admin: "/admin",
+  admin: "/shop",
+  shop: "/shop",
   employee: "/employee",
   setup: "/setup",
-  login: "/login",
+  login: "/shop",
   enrol: "/enrol",
   dashboard: "/dashboard",
   worker: "/worker",
@@ -38,6 +39,22 @@ export function appLink(path: string) {
   return `${getAppOrigin()}${normalized}`;
 }
 
+/** Customer enrolment page for a specific shop */
+export function tenantClientLink(slug: string) {
+  return appLink(`/${slug}/client`);
+}
+
+/** Tenant-scoped worker sign-in page */
+export function tenantEmployeeLink(slug: string) {
+  return appLink(`/${slug}/employee`);
+}
+
+/** @deprecated Use tenantEmployeeLink(slug) */
+export function employeeLoginLink(slug?: string) {
+  if (slug) return tenantEmployeeLink(slug);
+  return appLink(APP_PATHS.employee);
+}
+
 export function getSupabaseUrl() {
   return import.meta.env.VITE_SUPABASE_URL ?? "";
 }
@@ -51,7 +68,7 @@ export function edgeFunctionLink(name: EdgeFunctionName | string) {
 export const LOCAL_APP_LINKS = {
   home: `${DEFAULT_LOCAL_ORIGIN}/`,
   client: `${DEFAULT_LOCAL_ORIGIN}/client`,
-  admin: `${DEFAULT_LOCAL_ORIGIN}/admin`,
+  shop: `${DEFAULT_LOCAL_ORIGIN}/shop`,
   employee: `${DEFAULT_LOCAL_ORIGIN}/employee`,
   setup: `${DEFAULT_LOCAL_ORIGIN}/setup`,
   dashboard: `${DEFAULT_LOCAL_ORIGIN}/dashboard`,
@@ -70,7 +87,7 @@ export const APP_LINK_GROUPS = [
     title: "Public",
     links: [
       { label: "Customer signup", path: APP_PATHS.client },
-      { label: "Admin login", path: APP_PATHS.admin },
+      { label: "Shop login", path: APP_PATHS.shop },
       { label: "Employee login", path: APP_PATHS.employee },
       { label: "First-time owner setup", path: APP_PATHS.setup },
     ],
