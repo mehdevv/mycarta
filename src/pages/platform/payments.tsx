@@ -85,7 +85,7 @@ export default function PlatformPaymentsPage() {
   };
 
   const exportCsv = () => {
-    downloadCsv(`mycarta-recus-${status}.csv`, [
+    downloadCsv(`carta-recus-${status}.csv`, [
       ["Commerce", "Montant", "Plan", "Période", "Méthode", "Statut", "Notes", "Créé le"],
       ...receipts.map((r) => [
         r.tenants?.name ?? "",

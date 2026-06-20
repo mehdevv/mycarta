@@ -1,13 +1,16 @@
 import { Clock, CreditCard, Sparkles, Unlock, type LucideIcon } from "lucide-react";
 import { Link } from "wouter";
-
-const perks: { icon: LucideIcon; label: string }[] = [
-  { icon: CreditCard, label: "Sans carte bancaire" },
-  { icon: Clock, label: "En ligne en 10 min" },
-  { icon: Unlock, label: "Résiliation libre" },
-];
+import { useLocale } from "@/lib/i18n/locale-context";
 
 export function LandingFinalCTA() {
+  const { t } = useLocale();
+
+  const perks: { icon: LucideIcon; label: string }[] = [
+    { icon: CreditCard, label: t("landing.finalCta.perkNoCard") },
+    { icon: Clock, label: t("landing.finalCta.perkFast") },
+    { icon: Unlock, label: t("landing.finalCta.perkCancel") },
+  ];
+
   return (
     <section className="landing-section bg-white">
       <div className="container-page max-w-[900px]">
@@ -16,20 +19,16 @@ export function LandingFinalCTA() {
             <Sparkles size={26} strokeWidth={1.75} />
           </div>
 
-          <h2 className="landing-h2 max-w-lg mx-auto">
-            Prêt à connaître vos clients ?
-          </h2>
-          <p className="landing-body mt-4 max-w-md mx-auto">
-            Configurez votre programme en 10 minutes. Essai 14 jours — 100 clients, 50 scans/jour.
-          </p>
+          <h2 className="landing-h2 max-w-lg mx-auto">{t("landing.finalCta.title")}</h2>
+          <p className="landing-body mt-4 max-w-md mx-auto">{t("landing.finalCta.description")}</p>
 
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link href="/shop?tab=signup" className="btn-pill btn-pill--on-dark lg w-full sm:w-auto justify-center">
-              Créer mon compte gratuit
+              {t("landing.finalCta.cta")}
             </Link>
           </div>
 
-          <div className="landing-cta-perks" role="list" aria-label="Avantages de l'essai gratuit">
+          <div className="landing-cta-perks" role="list" aria-label={t("landing.finalCta.perksAria")}>
             {perks.map((p) => {
               const Icon = p.icon;
               return (

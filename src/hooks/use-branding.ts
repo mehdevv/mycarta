@@ -46,6 +46,7 @@ export function usePlatformBranding() {
     name: PLATFORM.name,
     tagline: PLATFORM.tagline,
     logoUrl: PLATFORM.logoUrl,
+    logoDarkUrl: PLATFORM.logoDarkUrl,
     primaryColor: PLATFORM.primaryColor,
     secondaryColor: PLATFORM.secondaryColor,
     supportEmail: PLATFORM.supportEmail,

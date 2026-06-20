@@ -18,11 +18,14 @@ import { supabase } from "@/lib/supabase";
 import { useDashboardTour } from "@/lib/dashboard-tour-context";
 import { useCurrentTenant } from "@/lib/tenant-context";
 import { PLANS } from "@/lib/pricing";
+import { useLocale } from "@/lib/i18n/locale-context";
+import { LOCALE_LABELS } from "@/lib/i18n";
+import type { ClientLanguage } from "@/lib/client-i18n";
 
 type BusinessSettingsState = {
   currency: string;
   timezone: string;
-  clientLanguage: "fr" | "en";
+  clientLanguage: ClientLanguage;
 };
 
 type SettingsPanelProps = {
@@ -40,6 +43,7 @@ const statusLabels: Record<string, string> = {
 
 export default function SettingsPanel({ business, onBusinessChange }: SettingsPanelProps) {
   const { data: settings } = useGetSettings();
+  const { t } = useLocale();
   const updateSettings = useUpdateSettings();
   const { toast } = useToast();
   const { user, logout } = useAuth();
@@ -214,16 +218,17 @@ export default function SettingsPanel({ business, onBusinessChange }: SettingsPa
           </div>
           <div className="dash-settings-field">
             <label className="dash-settings-label" htmlFor="settings-language">
-              Langue client
+              {t("dashboard.settings.clientLanguage")}
             </label>
             <select
               id="settings-language"
               className="dash-settings-input"
               value={business.clientLanguage}
-              onChange={(e) => patchBusiness({ clientLanguage: e.target.value as "fr" | "en" })}
+              onChange={(e) => patchBusiness({ clientLanguage: e.target.value as ClientLanguage })}
             >
-              <option value="fr">Français</option>
-              <option value="en">English</option>
+              <option value="fr">{LOCALE_LABELS.fr}</option>
+              <option value="en">{LOCALE_LABELS.en}</option>
+              <option value="ar">{LOCALE_LABELS.ar}</option>
             </select>
           </div>
         </div>

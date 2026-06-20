@@ -1,3 +1,6 @@
+import { usePlatformBranding } from "@/hooks/use-branding";
+import { useLocale } from "@/lib/i18n/locale-context";
+
 const logos = [
   "Salon Andalou",
   "Boulangerie Dorée",
@@ -30,10 +33,12 @@ function LogoItem({ name }: { name: string }) {
 }
 
 export function LandingLogoMarquee() {
+  const platform = usePlatformBranding();
+  const { t } = useLocale();
   const track = [...logos, ...logos];
 
   return (
-    <section className="landing-marquee" aria-label="Commerces qui utilisent mycarta">
+    <section className="landing-marquee" aria-label={t("landing.testimonials.marqueeAria", { name: platform.name })}>
       <div className="landing-marquee-fade landing-marquee-fade--left" aria-hidden />
       <div className="landing-marquee-fade landing-marquee-fade--right" aria-hidden />
       <div className="landing-marquee-track">

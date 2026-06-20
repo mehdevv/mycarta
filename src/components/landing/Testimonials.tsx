@@ -2,38 +2,15 @@ import { Link } from "wouter";
 import { Star } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { usePlatformBranding } from "@/hooks/use-branding";
+import { useLocale } from "@/lib/i18n/locale-context";
 import feedbackIllustration from "@/assets/feedback.png";
 
-const quotes = [
-  {
-    text: "En deux semaines, 340 clients inscrits. Avant, nous n'avions rien. Maintenant nous envoyons un WhatsApp chaque vendredi et ils reviennent vraiment.",
-    initials: "NK",
-    name: "Nadia K.",
-    role: "Salon de Thé Andalou · Alger",
-    featured: true,
-  },
-  {
-    text: "Nos habitués adorent leur carte digitale. Ça donne une image premium — et cette perception compte.",
-    initials: "MR",
-    name: "Mehdi R.",
-    role: "Hôtel boutique · Oran",
-    featured: false,
-  },
-  {
-    text: "Trois fraudes bloquées la première semaine. Le coût de l'abonnement était rentabilisé trois fois.",
-    initials: "ID",
-    name: "Inès D.",
-    role: "Boulangerie Dorée · Constantine",
-    featured: false,
-  },
-];
-
-function TestimonialsVisual({ className = "" }: { className?: string }) {
+function TestimonialsVisual({ className = "", imageAlt }: { className?: string; imageAlt: string }) {
   return (
     <div className={`landing-testimonials-visual ${className}`}>
       <img
         src={feedbackIllustration}
-        alt="Commerçant satisfait recevant des avis positifs de ses clients"
+        alt={imageAlt}
         className="landing-testimonials-illustration"
       />
     </div>
@@ -42,6 +19,32 @@ function TestimonialsVisual({ className = "" }: { className?: string }) {
 
 export function LandingTestimonials() {
   const platform = usePlatformBranding();
+  const { t } = useLocale();
+
+  const quotes = [
+    {
+      text: t("landing.testimonials.q1"),
+      initials: "NK",
+      name: "Nadia K.",
+      role: t("landing.testimonials.q1Role"),
+      featured: true,
+    },
+    {
+      text: t("landing.testimonials.q2"),
+      initials: "MR",
+      name: "Mehdi R.",
+      role: t("landing.testimonials.q2Role"),
+      featured: false,
+    },
+    {
+      text: t("landing.testimonials.q3"),
+      initials: "ID",
+      name: "Inès D.",
+      role: t("landing.testimonials.q3Role"),
+      featured: false,
+    },
+  ];
+
   const featured = quotes.find((q) => q.featured)!;
   const others = quotes.filter((q) => !q.featured);
 
@@ -51,14 +54,14 @@ export function LandingTestimonials() {
         <div className="landing-testimonials-grid">
           <div className="landing-testimonials-content">
             <SectionHeader
-              eyebrow="Témoignages"
-              title="Ils ont quitté le papier"
-              description={`Commerces en Algérie qui utilisent ${platform.name} au quotidien.`}
+              eyebrow={t("landing.testimonials.eyebrow")}
+              title={t("landing.testimonials.title")}
+              description={t("landing.testimonials.description", { name: platform.name })}
               align="left"
               className="!mb-8 lg:!mb-10"
             />
 
-            <TestimonialsVisual className="lg:hidden mb-8" />
+            <TestimonialsVisual className="lg:hidden mb-8" imageAlt={t("landing.testimonials.imageAlt")} />
 
             <blockquote className="landing-card landing-card--highlight mb-6 lg:mb-8">
               <div className="flex gap-1 mb-5" aria-hidden>
@@ -102,11 +105,14 @@ export function LandingTestimonials() {
             </div>
 
             <Link href="/shop?tab=signup" className="btn-pill w-full sm:w-auto justify-center mt-10 lg:mt-12">
-              Rejoindre ces commerces
+              {t("landing.testimonials.cta")}
             </Link>
           </div>
 
-          <TestimonialsVisual className="hidden lg:flex landing-testimonials-visual--sticky" />
+          <TestimonialsVisual
+            className="hidden lg:flex landing-testimonials-visual--sticky"
+            imageAlt={t("landing.testimonials.imageAlt")}
+          />
         </div>
       </div>
     </section>

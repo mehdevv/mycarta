@@ -1,7 +1,7 @@
 import { useMemo, useEffect } from "react";
 import { useGetSettings } from "@/api";
 
-export type ClientLanguage = "fr" | "en";
+export type ClientLanguage = "fr" | "en" | "ar";
 
 const messages = {
   en: {
@@ -128,14 +128,79 @@ const messages = {
     rewardRedeemedDesc: "Ce prix a été récupéré. Merci pour votre fidélité !",
     waitingForStaff: "En attente du scan par le personnel…",
     rewardAlreadyRedeemed: "Déjà utilisée",
-    rewardUpcoming: "Tampon {position}",
+    rewardUpcoming: "Stamp {position}",
+  },
+  ar: {
+    loading: "جاري التحميل…",
+    loadingCard: "جاري تحميل بطاقتك…",
+    loadingReward: "جاري تحميل المكافأة…",
+    invalidCardLink: "رابط البطاقة غير صالح",
+    invalidRewardLink: "رابط المكافأة غير صالح",
+    cardNotFound: "البطاقة غير موجودة",
+    cardNotFoundDesc: "بطاقة الولاء هذه غير موجودة أو تم حذفها.",
+    getNewCard: "الحصول على بطاقة جديدة",
+    share: "مشاركة",
+    save: "حفظ",
+    shareCard: "مشاركة البطاقة",
+    saveCard: "حفظ البطاقة",
+    loyaltyCardTitle: "بطاقة ولاء {business}",
+    rewardReady: "المكافأة جاهزة!",
+    progress: "التقدم",
+    showQrHint: "اعرض رمز QR عند الكاونتر لجمع الأختام",
+    recentVisits: "الساعة الأخيرة",
+    blocked: "محظور",
+    saveLinkProminent: "احفظ هذا الرابط — ستحتاجه لفتح بطاقتك مجدداً",
+    cardNumber: "رقم البطاقة",
+    cardIdLabel: "المعرّف",
+    copyLink: "نسخ الرابط",
+    copied: "تم النسخ!",
+    getFreeCard: "احصل على بطاقة الولاء المجانية",
+    enrolDesc: "أدخل بياناتك — تُفتح بطاقتك فوراً مع رابط قصير للحفظ.",
+    fullName: "الاسم الكامل",
+    yourName: "اسمك",
+    phone: "الهاتف",
+    phonePlaceholder: "0555 123 456",
+    createMyCard: "إنشاء بطاقتي",
+    creatingCard: "جاري إنشاء بطاقتك…",
+    alreadyHaveCard: "لديك بطاقة بالفعل؟",
+    sixDigitPlaceholder: "رقم من 6 أرقام",
+    open: "فتح",
+    welcomeBack: "مرحباً بعودتك!",
+    openingExisting: "جاري فتح بطاقتك الحالية.",
+    couldNotCreate: "تعذر إنشاء البطاقة",
+    invalidCardNumber: "رقم بطاقة غير صالح",
+    enterSixDigits: "أدخل رقم بطاقتك المكوّن من 6 أرقام.",
+    nameMinLength: "يجب أن يحتوي الاسم على حرفين على الأقل.",
+    phoneRequired: "رقم الهاتف مطلوب.",
+    milestoneHint: "باقي {remaining} ختم(أختام) حتى: {label}",
+    milestoneHintOne: "ختم واحد متبقٍ حتى: {label}",
+    noRewardWaiting: "لا مكافأة في الانتظار",
+    noRewardDesc: "ليس لديك جائزة للمطالبة بها الآن. استمر في جمع الأختام!",
+    backToMyCard: "العودة لبطاقتي",
+    myCard: "بطاقتي",
+    yourPrize: "جائزتك",
+    earnedOn: "حصلت عليها {date}",
+    showStaffCode: "اعرض هذا الرمز للموظف",
+    staffRedeemHint: "سيُعلّم الموظف المكافأة كمُستخدَمة عند استلام الجائزة.",
+    backToLoyaltyCard: "العودة لبطاقة الولاء",
+    myRewards: "مكافآتي",
+    rewardPending: "للاستخدام",
+    rewardRedeemed: "مُستخدَمة",
+    tapToRedeem: "اضغط لعرض رمز QR",
+    rewardEnjoy: "استمتع بمكافأتك!",
+    rewardRedeemedDesc: "تم استلام هذه الجائزة. شكراً لولائك!",
+    waitingForStaff: "في انتظار مسح الموظف…",
+    rewardAlreadyRedeemed: "مُستخدَمة مسبقاً",
+    rewardUpcoming: "ختم {position}",
   },
 } as const;
 
 export type ClientMessageKey = keyof typeof messages.en;
 
 export function normalizeClientLanguage(value: unknown): ClientLanguage {
-  return value === "en" ? "en" : "fr";
+  if (value === "en") return "en";
+  if (value === "ar") return "ar";
+  return "fr";
 }
 
 export function clientT(lang: ClientLanguage) {
@@ -158,6 +223,8 @@ export function useClientI18n() {
 
   useEffect(() => {
     document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+    document.documentElement.classList.toggle("is-rtl", lang === "ar");
   }, [lang]);
 
   return { lang, t, isLoading };

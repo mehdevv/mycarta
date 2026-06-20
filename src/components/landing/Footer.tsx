@@ -1,11 +1,14 @@
 import { Link, useLocation, useSearch } from "wouter";
 import BrandLogo from "@/components/brand/mascot";
 import { usePlatformBranding } from "@/hooks/use-branding";
-import { LANDING_FOOTER_PRODUCT_LINKS } from "./nav-links";
+import { useLocale } from "@/lib/i18n/locale-context";
+import { LANDING_FOOTER_PRODUCT_LINKS, LANDING_FOOTER_LEGAL_LINKS } from "./nav-links";
+import { LandingSectionLink } from "./LandingSectionLink";
 import footerCtaImg from "@/assets/1.png";
 
 export function LandingFooter() {
   const platform = usePlatformBranding();
+  const { t } = useLocale();
   const [location] = useLocation();
   const search = useSearch();
   const hideCta = location === "/shop" && new URLSearchParams(search).get("tab") === "signup";
@@ -27,9 +30,9 @@ export function LandingFooter() {
                 aria-hidden
               />
               <div className="landing-footer-cta-copy">
-                <p className="text-white font-medium text-[17px]">Pas encore inscrit ?</p>
+                <p className="text-white font-medium text-[17px]">{t("landing.footer.notSignedUp")}</p>
                 <p className="text-[14px] mt-1" style={{ color: "rgba(255,255,255,0.6)" }}>
-                  14 jours gratuits — configurez votre programme aujourd&apos;hui.
+                  {t("landing.footer.trialDesc")}
                 </p>
               </div>
             </div>
@@ -38,7 +41,7 @@ export function LandingFooter() {
               className="btn-pill shrink-0"
               style={{ background: "#fff", color: "#000" }}
             >
-              Essai gratuit
+              {t("common.freeTrial")}
             </Link>
           </div>
         )}
@@ -50,7 +53,7 @@ export function LandingFooter() {
                 role="admin"
                 size="xs"
                 animate={false}
-                logoUrl={platform.logoUrl}
+                logoUrl={platform.logoDarkUrl}
                 alt={platform.name}
                 primaryColor="#888888"
               />
@@ -61,8 +64,9 @@ export function LandingFooter() {
             </p>
             <a
               href={`mailto:${platform.supportEmail}`}
-              className="text-[14px] mt-4 inline-block hover:text-white transition-colors underline-offset-2 hover:underline"
+              className="text-[14px] mt-4 inline-block hover:text-white transition-colors underline-offset-2 hover:underline email"
               style={{ color: "rgba(255,255,255,0.75)" }}
+              dir="ltr"
             >
               {platform.supportEmail}
             </a>
@@ -70,18 +74,18 @@ export function LandingFooter() {
 
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.4)" }}>
-              Produit
+              {t("landing.footer.product")}
             </p>
             <ul className="mt-4 flex flex-col gap-2.5">
               {LANDING_FOOTER_PRODUCT_LINKS.map((l) => (
-                <li key={l.label}>
-                  <Link
-                    href={l.href}
+                <li key={l.sectionId}>
+                  <LandingSectionLink
+                    sectionId={l.sectionId}
                     className="text-[14px] hover:text-white transition-colors py-0.5 inline-block"
                     style={{ color: "rgba(255,255,255,0.65)" }}
                   >
-                    {l.label}
-                  </Link>
+                    {t(l.labelKey)}
+                  </LandingSectionLink>
                 </li>
               ))}
             </ul>
@@ -89,22 +93,22 @@ export function LandingFooter() {
 
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.4)" }}>
-              Compte
+              {t("landing.footer.account")}
             </p>
             <ul className="mt-4 flex flex-col gap-2.5">
               <li>
                 <Link href="/shop?tab=signup" className="text-[14px] hover:text-white transition-colors py-0.5 inline-block" style={{ color: "rgba(255,255,255,0.65)" }}>
-                  Essai gratuit
+                  {t("common.freeTrial")}
                 </Link>
               </li>
               <li>
                 <Link href="/shop" className="text-[14px] hover:text-white transition-colors py-0.5 inline-block" style={{ color: "rgba(255,255,255,0.65)" }}>
-                  Connexion
+                  {t("common.login")}
                 </Link>
               </li>
               <li>
                 <Link href="/client" className="text-[14px] hover:text-white transition-colors py-0.5 inline-block" style={{ color: "rgba(255,255,255,0.65)" }}>
-                  Trouver un commerce
+                  {t("nav.findShop")}
                 </Link>
               </li>
             </ul>
@@ -112,14 +116,18 @@ export function LandingFooter() {
 
           <div>
             <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.4)" }}>
-              Légal
+              {t("landing.footer.legal")}
             </p>
             <ul className="mt-4 flex flex-col gap-2.5">
-              {["Mentions légales", "Confidentialité", "RGPD", "Cookies"].map((l) => (
-                <li key={l}>
-                  <span className="text-[14px]" style={{ color: "rgba(255,255,255,0.55)" }}>
-                    {l}
-                  </span>
+              {LANDING_FOOTER_LEGAL_LINKS.map((l) => (
+                <li key={l.slug}>
+                  <Link
+                    href={`/legal/${l.slug}`}
+                    className="text-[14px] hover:text-white transition-colors py-0.5 inline-block"
+                    style={{ color: "rgba(255,255,255,0.65)" }}
+                  >
+                    {t(l.labelKey)}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -128,10 +136,10 @@ export function LandingFooter() {
 
         <div className="mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.4)" }}>
-            © 2026 {platform.name}. Tous droits réservés.
+            {t("landing.footer.copyright", { name: platform.name })}
           </p>
           <Link href="/" className="text-[13px] hover:text-white transition-colors" style={{ color: "rgba(255,255,255,0.5)" }}>
-            Retour à l&apos;accueil
+            {t("common.backToHome")}
           </Link>
         </div>
       </div>

@@ -30,7 +30,7 @@ export default function PlatformSubscriptionsPage() {
   const totalRevenue = subscriptions.filter((s) => s.status === "active").reduce((sum, s) => sum + s.amount_dzd, 0);
 
   const exportCsv = () => {
-    downloadCsv(`mycarta-abonnements.csv`, [
+    downloadCsv(`carta-abonnements.csv`, [
       ["Commerce", "Slug", "Plan", "Période", "Montant", "Statut", "Chargily ID", "Début", "Fin", "Créé le"],
       ...filtered.map((s) => [
         s.tenants?.name ?? "",

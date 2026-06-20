@@ -15,7 +15,7 @@ import { Search, ExternalLink, Download } from "lucide-react";
 import { downloadCsv, formatDateFr } from "@/lib/platform-export";
 
 function exportTenantsCsv(rows: PlatformTenantRow[]) {
-  downloadCsv(`mycarta-commerces-${new Date().toISOString().slice(0, 10)}.csv`, [
+  downloadCsv(`carta-commerces-${new Date().toISOString().slice(0, 10)}.csv`, [
     ["Nom", "Slug", "Plan", "Statut", "Clients", "Cartes actives", "+7j", "Scans", "Fraude", "Employés", "Récomp. attente", "Onboarding", "Dernière activité", "Propriétaire", "Email", "Inscrit le"],
     ...rows.map((t) => [
       t.name,

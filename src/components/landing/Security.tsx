@@ -1,35 +1,38 @@
 import { Link } from "wouter";
 import { Lock, Shield, CheckSquare, RefreshCw, type LucideIcon } from "lucide-react";
+import { useLocale } from "@/lib/i18n/locale-context";
 import { SectionHeader } from "./SectionHeader";
 import { LandingMobileCarousel } from "./LandingMobileCarousel";
 
-const items: { icon: LucideIcon; title: string; body: string }[] = [
-  { icon: Lock, title: "Chiffrement AES-256", body: "Données sensibles chiffrées au repos, en transit et en sauvegarde." },
-  { icon: Shield, title: "Isolation multi-tenant", body: "Chaque commerce est isolé — vos données ne se mélangent jamais." },
-  { icon: CheckSquare, title: "Conforme RGPD", body: "Consentement, export et suppression des données — intégrés." },
-  { icon: RefreshCw, title: "Sauvegardes quotidiennes", body: "Récupération point-in-time sur tous les plans payants." },
-];
-
 export function LandingSecurity() {
+  const { t } = useLocale();
+
+  const items: { icon: LucideIcon; title: string; body: string }[] = [
+    { icon: Lock, title: t("landing.security.card1Title"), body: t("landing.security.card1Body") },
+    { icon: Shield, title: t("landing.security.card2Title"), body: t("landing.security.card2Body") },
+    { icon: CheckSquare, title: t("landing.security.card3Title"), body: t("landing.security.card3Body") },
+    { icon: RefreshCw, title: t("landing.security.card4Title"), body: t("landing.security.card4Body") },
+  ];
+
   return (
     <section id="security" className="landing-section" style={{ background: "var(--landing-bg-dark)" }}>
       <div className="container-page">
         <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-8 sm:gap-10 lg:gap-16 items-start">
           <div className="lg:sticky lg:top-[calc(var(--landing-nav-h)+32px)]">
             <SectionHeader
-              eyebrow="Sécurité"
-              title="Vos données vous appartiennent"
-              description="Standards de niveau financier : chiffrement, isolation par commerce, conformité RGPD."
+              eyebrow={t("landing.security.eyebrow")}
+              title={t("landing.security.title")}
+              description={t("landing.security.description")}
               align="left"
               className="!mb-8 [&_.landing-body]:text-white/65 [&_.landing-eyebrow]:text-white/50 [&_.landing-h2]:text-white"
             />
             <Link href="/shop?tab=signup" className="btn-pill landing-security-cta w-full sm:w-auto justify-center">
-              Essayer en toute confiance
+              {t("landing.security.cta")}
             </Link>
           </div>
 
           <LandingMobileCarousel
-            ariaLabel="Mesures de sécurité"
+            ariaLabel={t("landing.security.carouselAria")}
             desktopClassName="landing-security-grid"
             className="landing-carousel--dark"
           >

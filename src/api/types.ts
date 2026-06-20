@@ -32,7 +32,7 @@ export interface ShopSettings {
   emailSender?: string | null;
   whatsappConfigured?: boolean;
   emailConfigured?: boolean;
-  clientLanguage: "fr" | "en";
+  clientLanguage: "fr" | "en" | "ar";
   updatedAt: string;
 }
 

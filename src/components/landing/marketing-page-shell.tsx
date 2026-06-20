@@ -1,16 +1,21 @@
 import { LandingNav } from "@/components/landing/Nav";
 import { LandingFooter } from "@/components/landing/Footer";
 import { Link } from "wouter";
+import { useLocale } from "@/lib/i18n/locale-context";
 import { cn } from "@/lib/utils";
 
 function AuthMinimalFooter() {
+  const { t } = useLocale();
+
   return (
     <footer className="shop-auth-footer">
       <p>
-        Vous êtes client ?{" "}
-        <Link href="/client">Trouver mon commerce</Link>
+        {t("landing.findShop.title")}{" "}
+        <Link href="/client">{t("nav.findShop")}</Link>
         {" · "}
-        <Link href="/employee">Espace employé</Link>
+        <Link href="/legal/conditions">{t("auth.legalTerms")}</Link>
+        {" · "}
+        <Link href="/legal/confidentialite">{t("auth.legalPrivacy")}</Link>
       </p>
     </footer>
   );

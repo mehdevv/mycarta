@@ -1,3 +1,26 @@
+export function PhoneShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="landing-mockup-phone">
+      <div className="landing-mockup-phone-bezel">
+        <div className="landing-mockup-phone-notch" aria-hidden />
+        <div className="landing-mockup-phone-screen">{children}</div>
+        <div className="landing-mockup-phone-home" aria-hidden />
+      </div>
+    </div>
+  );
+}
+
+export function PhoneStatusBar() {
+  return (
+    <div className="landing-mockup-phone-status">
+      <span>9:41</span>
+      <span className="landing-mockup-phone-signal" aria-hidden>
+        <span /><span /><span />
+      </span>
+    </div>
+  );
+}
+
 export function BrowserChrome({ url = "app.mycarta.dz/dashboard" }: { url?: string }) {
   return (
     <div

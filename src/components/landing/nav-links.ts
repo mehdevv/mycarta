@@ -1,12 +1,18 @@
 export const LANDING_NAV_LINKS = [
-  { href: "/#features", label: "Fonctionnalités" },
-  { href: "/#how-it-works", label: "Comment ça marche" },
-  { href: "/#pricing", label: "Tarifs" },
+  { sectionId: "features", labelKey: "nav.features" },
+  { sectionId: "how-it-works", labelKey: "nav.howItWorks" },
+  { sectionId: "pricing", labelKey: "nav.pricing" },
+  { sectionId: "security", labelKey: "nav.security" },
 ] as const;
 
-export const LANDING_FOOTER_PRODUCT_LINKS = [
-  { label: "Fonctionnalités", href: "/#features" },
-  { label: "Comment ça marche", href: "/#how-it-works" },
-  { label: "Tarifs", href: "/#pricing" },
-  { label: "Sécurité", href: "/#security" },
+export const LANDING_FOOTER_PRODUCT_LINKS = LANDING_NAV_LINKS;
+
+export const LANDING_FOOTER_LEGAL_LINKS = [
+  { slug: "mentions-legales", labelKey: "landing.footer.legalNotice" },
+  { slug: "confidentialite", labelKey: "landing.footer.privacy" },
+  { slug: "rgpd", labelKey: "landing.footer.gdpr" },
+  { slug: "cookies", labelKey: "landing.footer.cookies" },
+  { slug: "conditions", labelKey: "auth.legalTerms" },
 ] as const;
+
+export type LegalSlug = (typeof LANDING_FOOTER_LEGAL_LINKS)[number]["slug"];

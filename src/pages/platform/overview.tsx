@@ -68,7 +68,7 @@ export default function PlatformOverviewPage() {
     <div className="plat-stack">
       <PlatformPageHeader
         title="Vue d'ensemble"
-        description="Statistiques globales de la plateforme mycarta."
+        description="Statistiques globales de la plateforme Carta."
         action={
           <div className="plat-toolbar">
             {alertCount > 0 && (

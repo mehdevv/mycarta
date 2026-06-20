@@ -226,3 +226,169 @@
     transform: translateY(1px);
   }
 }
+
+/* ── RTL & Arabic typography (per localization skill) ── */
+html[lang="ar"] body,
+html.is-rtl body {
+  font-family: "Cairo", "Inter", system-ui, sans-serif;
+  line-height: 1.8;
+}
+
+[dir="rtl"] input:not([type="email"]):not([type="url"]),
+[dir="rtl"] textarea,
+[dir="rtl"] select {
+  text-align: end;
+}
+
+[dir="rtl"] .email,
+[dir="rtl"] .url,
+[dir="rtl"] .phone-number,
+[dir="rtl"] input[type="email"],
+[dir="rtl"] input[type="url"] {
+  direction: ltr;
+  text-align: start;
+  unicode-bidi: isolate;
+}
+
+[dir="rtl"] .icon-mirror-rtl,
+[dir="rtl"] .landing-check + span {
+  /* checkmarks don't mirror */
+}
+
+[dir="rtl"] .auth-pane--form {
+  order: 2;
+}
+
+[dir="rtl"] .auth-pane--promo {
+  order: 1;
+}
+
+/* Language switcher */
+.lang-switcher {
+  position: relative;
+}
+
+.lang-switcher-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 12px;
+  border: 1px solid var(--landing-border, hsl(var(--border)));
+  border-radius: 10px;
+  font: 500 13px/1 var(--landing-font, inherit);
+  color: var(--landing-text-secondary, hsl(var(--muted-foreground)));
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.lang-switcher-trigger:hover {
+  border-color: var(--landing-text-secondary, hsl(var(--border)));
+  color: var(--landing-text, hsl(var(--foreground)));
+}
+
+.lang-switcher-trigger--compact {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.lang-switcher-chevron {
+  transition: transform 0.15s;
+}
+
+.lang-switcher-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.lang-switcher-trigger--circle {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  justify-content: center;
+  gap: 0;
+  margin-inline-start: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--landing-text-secondary, hsl(var(--muted-foreground)));
+  border-color: var(--landing-border, hsl(var(--border)));
+}
+
+.lang-switcher-trigger--circle:hover,
+.lang-switcher--circle:focus-within .lang-switcher-trigger--circle {
+  border-color: var(--landing-text-secondary, hsl(var(--border)));
+  color: var(--landing-text, hsl(var(--foreground)));
+}
+
+.lang-switcher--circle .lang-switcher-menu {
+  top: calc(100% + 10px);
+  inset-inline-end: 0;
+  left: auto;
+  right: auto;
+  min-width: 132px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+.lang-switcher--circle:hover .lang-switcher-menu,
+.lang-switcher--circle:focus-within .lang-switcher-menu {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.lang-switcher-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  inset-inline-end: 0;
+  z-index: 50;
+  min-width: 140px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--landing-border, hsl(var(--border)));
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.lang-switcher-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font: 500 13px/1.4 var(--landing-font, inherit);
+  color: var(--landing-text, hsl(var(--foreground)));
+  cursor: pointer;
+  text-align: start;
+}
+
+.lang-switcher-option:hover {
+  background: var(--landing-bg-secondary, hsl(var(--muted)));
+}
+
+.lang-switcher-option.is-active {
+  background: var(--landing-bg-secondary, hsl(var(--muted)));
+}
+
+[dir="rtl"] .landing-hero-cta,
+[dir="rtl"] .landing-nav-actions {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .auth-proof-avatar:not(:first-child) {
+  margin-inline-start: -8px;
+  margin-left: 0;
+}
+
+[dir="rtl"] .auth-card-mock {
+  text-align: start;
+}

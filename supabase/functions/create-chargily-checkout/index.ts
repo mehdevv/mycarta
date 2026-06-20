@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
         currency: "dzd",
         success_url: `${appUrl}/dashboard/billing?success=1`,
         failure_url: `${appUrl}/dashboard/billing?failed=1`,
-        description: `mycarta ${plan.name} — ${tenant?.name ?? ""}`,
+        description: `Carta ${plan.name} — ${tenant?.name ?? ""}`,
         locale: "fr",
         metadata: {
           subscription_id: sub.id,

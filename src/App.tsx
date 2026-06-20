@@ -7,6 +7,7 @@ import SkipLink from "@/components/layout/skip-link";
 import PageTransition from "@/components/layout/page-transition";
 import NotFound from "@/pages/not-found";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { LocaleProvider, useLocale } from "@/lib/i18n/locale-context";
 
 import { TenantProvider } from "@/lib/tenant-context";
 import { DashboardTourProvider } from "@/lib/dashboard-tour-context";
@@ -28,6 +29,7 @@ import PlatformAnalyticsPage from "@/pages/platform/analytics";
 import PlatformAlertsPage from "@/pages/platform/alerts";
 import PlatformSettingsPage from "@/pages/platform/settings";
 import PlatformAccessDenied from "@/pages/platform/access-denied";
+import LegalPage from "@/pages/public/legal-page";
 import Setup from "@/pages/public/setup";
 import ShopAuthPage from "@/pages/public/shop-auth";
 import EmployeeLogin from "@/pages/public/employee-login";
@@ -69,6 +71,18 @@ const queryClient = new QueryClient({
   },
 });
 
+function LoadingScreen() {
+  const { t } = useLocale();
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+      </div>
+    </div>
+  );
+}
+
 function ProtectedRoute({
   component: Component,
   role,
@@ -83,16 +97,7 @@ function ProtectedRoute({
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      loadingFallback ?? (
-        <div className="flex h-screen items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          </div>
-        </div>
-      )
-    );
+    return loadingFallback ?? <LoadingScreen />;
   }
 
   if (!user) return <Redirect to={`~${loginPath}`} />;
@@ -107,13 +112,14 @@ function ProtectedRoute({
 
 function PlatformProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
+  const { t } = useLocale();
 
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 rounded-full border-4 border-white/30 border-t-white animate-spin" />
-          <p className="text-sm text-slate-400">Chargement…</p>
+          <p className="text-sm text-slate-400">{t("common.loading")}</p>
         </div>
       </div>
     );
@@ -152,6 +158,7 @@ function Router() {
       <Route path="/" component={LandingPage} />
       <Route path="/tarifs" component={PricingRedirect} />
       <Route path="/signup" component={SignupRedirect} />
+      <Route path="/legal/:slug" component={LegalPage} />
 
       <Route path="/shop" component={ShopAuthPage} />
       <Route path="/admin">
@@ -323,6 +330,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <LocaleProvider>
       <MotionConfig reducedMotion="user">
         <TooltipProvider>
           <AuthProvider>
@@ -338,6 +346,7 @@ function App() {
           </AuthProvider>
         </TooltipProvider>
       </MotionConfig>
+      </LocaleProvider>
     </QueryClientProvider>
   );
 }

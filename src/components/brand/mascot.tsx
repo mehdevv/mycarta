@@ -10,6 +10,16 @@ const sizeClasses = {
   xl: "h-36 w-36",
 } as const;
 
+// Logo image keeps its natural aspect ratio (the brand mark is horizontal),
+// so we constrain height and let width scale rather than cropping to a square.
+const logoHeightClasses = {
+  xs: "h-8",
+  sm: "h-10",
+  md: "h-12",
+  lg: "h-16",
+  xl: "h-20",
+} as const;
+
 const iconSizes = {
   xs: 18,
   sm: 22,
@@ -48,7 +58,7 @@ export default function BrandLogo({
     <img
       src={resolvedLogo}
       alt={label}
-      className={`${sizeClasses[size]} rounded-lg object-cover select-none`}
+      className={`${logoHeightClasses[size]} w-auto max-w-[180px] rounded-lg object-contain select-none`}
       draggable={false}
     />
   ) : (

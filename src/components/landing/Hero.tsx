@@ -7,33 +7,34 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { useLocale } from "@/lib/i18n/locale-context";
+import { LandingSectionLink } from "@/components/landing/LandingSectionLink";
 import heroIllustration from "@/assets/hero-scan.png";
 
-const benefits: { icon: LucideIcon; label: string }[] = [
-  { icon: QrCode, label: "QR sans app" },
-  { icon: Users, label: "CRM intégré" },
-  { icon: BarChart3, label: "Analytics" },
-  { icon: ShieldCheck, label: "Anti-fraude" },
-  { icon: LayoutDashboard, label: "Tableau de bord" },
-];
-
 export function LandingHero() {
+  const { t } = useLocale();
+
+  const benefits: { icon: LucideIcon; label: string }[] = [
+    { icon: QrCode, label: t("landing.hero.chipQr") },
+    { icon: Users, label: t("landing.hero.chipCrm") },
+    { icon: BarChart3, label: t("landing.hero.chipAnalytics") },
+    { icon: ShieldCheck, label: t("landing.hero.chipAntiFraud") },
+    { icon: LayoutDashboard, label: t("landing.hero.chipDashboard") },
+  ];
+
   return (
-    <section
-      id="top"
-      className="bg-white overflow-hidden landing-hero-section"
-    >
+    <section id="top" className="bg-white overflow-hidden landing-hero-section">
       <div className="container-page">
         <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-8 sm:gap-10 lg:gap-16 items-center">
           <div className="landing-hero-copy">
             <h1 className="landing-h1 anim-in" style={{ animationDelay: "0ms" }}>
-              Fidélisez vos clients sans carte papier
+              {t("landing.hero.title")}
             </h1>
 
             <ul
               className="landing-hero-chips anim-in"
               style={{ animationDelay: "80ms" }}
-              aria-label="Fonctionnalités clés"
+              aria-label={t("landing.hero.chipsAria")}
             >
               {benefits.map((b) => {
                 const Icon = b.icon;
@@ -52,17 +53,17 @@ export function LandingHero() {
 
             <div className="landing-hero-cta anim-in" style={{ animationDelay: "120ms" }}>
               <Link href="/shop?tab=signup" className="btn-pill lg">
-                Commencer gratuitement
+                {t("landing.hero.ctaStart")}
               </Link>
-              <a href="#how-it-works" className="btn-primary lg">
-                Voir comment ça marche
-              </a>
+              <LandingSectionLink sectionId="how-it-works" className="btn-primary lg">
+                {t("landing.hero.ctaHow")}
+              </LandingSectionLink>
             </div>
 
             <p className="landing-hero-trust anim-in" style={{ animationDelay: "160ms" }}>
-              <span>14 jours gratuits</span>
-              <span>Sans carte bancaire</span>
-              <span>Prêt en 10 min</span>
+              <span>{t("landing.hero.trustTrial")}</span>
+              <span>{t("landing.hero.trustNoCard")}</span>
+              <span>{t("landing.hero.trustReady")}</span>
             </p>
           </div>
 
@@ -72,7 +73,7 @@ export function LandingHero() {
           >
             <img
               src={heroIllustration}
-              alt="Client scannant un QR code fidélité au comptoir d'un café"
+              alt={t("landing.hero.imageAlt")}
               className="landing-hero-illustration"
               width={640}
               height={640}

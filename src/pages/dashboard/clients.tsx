@@ -46,7 +46,7 @@ export default function Clients() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "clients-mycarta.csv";
+      link.download = "clients-carta.csv";
       link.click();
       URL.revokeObjectURL(url);
       toast({ title: "Export terminé", description: "Fichier CSV téléchargé." });

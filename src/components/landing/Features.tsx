@@ -1,43 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Check } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { useLocale } from "@/lib/i18n/locale-context";
 import { FeatureMockup } from "./mockups/FeatureMockup";
 import { SectionHeader } from "./SectionHeader";
 import { LandingMobileCarousel } from "./LandingMobileCarousel";
-
-const features = [
-  {
-    eyebrow: "CRM & Contacts",
-    headline: "Connaissez chaque client par son nom.",
-    body: "Chaque scan devient un contact : nom, téléphone, historique — capturés automatiquement.",
-    bullets: ["Profil + historique des scans", "Notes privées", "RGPD intégré", "Export CSV"],
-  },
-  {
-    eyebrow: "Analytics",
-    headline: "Voyez ce qui fonctionne vraiment.",
-    body: "Produits qui fidélisent, clients proches d'une récompense, performance employés — sans tableur.",
-    bullets: ["Dashboards 30 / 90 / 365 j", "Suivi produits", "Classement employés", "Alertes fraude"],
-  },
-  {
-    eyebrow: "Campagnes",
-    headline: "Contactez vos clients directement.",
-    body: "WhatsApp ou email en un clic. Filtrez par tampons, dernière visite ou récompense en attente.",
-    bullets: ["WhatsApp (plan Maison+)", "Email domaine perso", "Segmentation", "Planification"],
-  },
-  {
-    eyebrow: "App Employé",
-    headline: "Chaque achat tracé.",
-    body: "QR unique par employé. Chaque tampon lié à un produit et un horaire — fraude bloquée.",
-    bullets: ["Journal par employé", "Règles anti-fraude", "Classement du jour", "Désactivation rapide"],
-  },
-  {
-    eyebrow: "Votre marque",
-    headline: "White-label total.",
-    body: "Logo, couleurs, slug public — vos clients ne voient que votre marque.",
-    bullets: ["Carte personnalisable", "Couleurs de marque", "URL /{boutique}", "Email expéditeur"],
-  },
-];
 
 function useFeatureScrollSpy(sectionRefs: React.MutableRefObject<(HTMLElement | null)[]>) {
   const [active, setActive] = useState(0);
@@ -80,6 +48,18 @@ export function LandingFeatures() {
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
   const active = useFeatureScrollSpy(sectionRefs);
   const reduceMotion = useReducedMotion();
+  const { t } = useLocale();
+
+  const features = useMemo(
+    () =>
+      [1, 2, 3, 4, 5].map((n) => ({
+        eyebrow: t(`landing.features.f${n}Eyebrow`),
+        headline: t(`landing.features.f${n}Headline`),
+        body: t(`landing.features.f${n}Body`),
+        bullets: [1, 2, 3, 4].map((b) => t(`landing.features.f${n}b${b}`)),
+      })),
+    [t],
+  );
 
   const scrollToFeature = (i: number) => {
     sectionRefs.current[i]?.scrollIntoView({
@@ -92,16 +72,16 @@ export function LandingFeatures() {
     <section id="features" className="landing-section landing-features-section">
       <div className="container-page">
         <SectionHeader
-          eyebrow="Fonctionnalités"
-          title="Tout ce qu'il faut pour fidéliser"
-          description="Les mêmes outils que votre tableau de bord — CRM, analytics, campagnes et anti-fraude."
+          eyebrow={t("landing.features.eyebrow")}
+          title={t("landing.features.title")}
+          description={t("landing.features.description")}
           className="landing-section-header--wide"
         />
 
         {/* Desktop — scroll-linked sticky showcase */}
         <div className="landing-features-showcase hidden lg:grid">
           <div className="landing-features-scroll-col">
-            <nav className="landing-features-rail" aria-label="Progression des fonctionnalités">
+            <nav className="landing-features-rail" aria-label={t("landing.features.railAria")}>
               {features.map((f, i) => (
                 <button
                   key={f.eyebrow}
@@ -199,7 +179,7 @@ export function LandingFeatures() {
         {/* Mobile / tablet — swipe carousel */}
         <div className="landing-features-mobile lg:hidden">
           <LandingMobileCarousel
-            ariaLabel="Fonctionnalités de la plateforme"
+            ariaLabel={t("landing.features.mobileCarouselAria")}
             desktopClassName="landing-features-carousel"
             minWidth="lg"
           >
@@ -229,7 +209,7 @@ export function LandingFeatures() {
 
         <div className="landing-section-cta">
           <Link href="/shop?tab=signup" className="btn-pill lg">
-            Essayer toutes les fonctionnalités
+            {t("landing.features.tryAll")}
           </Link>
         </div>
       </div>

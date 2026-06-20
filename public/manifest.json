@@ -1,6 +1,6 @@
 {
-  "name": "mycarta",
-  "short_name": "mycarta",
+  "name": "Carta",
+  "short_name": "Carta",
   "description": "Cartes fidélité digitales et scans QR",
   "start_url": "/",
   "display": "standalone",

@@ -174,8 +174,8 @@ export function getPlanCapabilities(planId: PlanId | string): PlanCapabilities {
   return getPlan(planId).capabilities;
 }
 
-export function formatDzd(amount: number | null) {
-  if (amount === null) return "Sur devis";
+export function formatDzd(amount: number | null, customQuote = "Sur devis") {
+  if (amount === null) return customQuote;
   return `${amount.toLocaleString("fr-DZ")} DA`;
 }
 
