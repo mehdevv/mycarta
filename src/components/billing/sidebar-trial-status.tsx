@@ -3,11 +3,11 @@ import { Link } from "wouter";
 import { AlertTriangle, ChevronDown, Clock } from "lucide-react";
 import { useCurrentTenant } from "@/lib/tenant-context";
 import { useGetAnalyticsOverview } from "@/api/analytics";
+import { readAiPromptUsage } from "@/lib/plan-quotas";
+import { getPlanQuotas } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 const TRIAL_DAYS = 14;
-const CLIENT_LIMIT = 100;
-const SCAN_LIMIT = 50;
 const TRIAL_EXPANDED_KEY = "dash-trial-expanded";
 
 function useTrialCountdown(endsAt: string | null) {
@@ -171,6 +171,10 @@ export default function SidebarTrialStatus() {
   if (trialStatus.planId === "trial") {
     const clientCount = analytics?.totalClients ?? 0;
     const scansToday = analytics?.scansToday ?? 0;
+    const clientLimit = trialStatus.clientLimit ?? 250;
+    const scanLimit = trialStatus.scansPerDayLimit ?? 50;
+    const aiLimit = getPlanQuotas("trial").aiCardPromptsPerDay ?? 3;
+    const aiUsed = readAiPromptUsage(tenant.id);
     const compactMeta = countdown || `${trialStatus.daysLeft}j`;
 
     return (
@@ -182,6 +186,9 @@ export default function SidebarTrialStatus() {
         expanded={expanded}
         onToggle={toggle}
       >
+        <p className="dash-trial-hint dash-trial-hint--inline">
+          Accès complet — limité par les quotas ci-dessous.
+        </p>
         <div className="dash-trial-bars space-y-2.5">
           <RemainingBar
             label="Temps restant"
@@ -189,8 +196,9 @@ export default function SidebarTrialStatus() {
             max={TRIAL_DAYS}
             timer={countdown}
           />
-          <UsageBar label="Clients" value={clientCount} max={CLIENT_LIMIT} />
-          <UsageBar label="Scans aujourd'hui" value={scansToday} max={SCAN_LIMIT} />
+          <UsageBar label="Clients" value={clientCount} max={clientLimit} />
+          <UsageBar label="Scans aujourd'hui" value={scansToday} max={scanLimit} />
+          <UsageBar label="Prompts IA aujourd'hui" value={aiUsed} max={aiLimit} />
         </div>
         <Link href="/billing" className="dash-trial-hint" onClick={(e) => e.stopPropagation()}>
           Voir les plans →

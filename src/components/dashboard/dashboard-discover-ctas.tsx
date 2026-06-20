@@ -7,7 +7,7 @@ import {
   CreditCard,
   Gift,
   Package,
-  Plug,
+  Megaphone,
   QrCode,
   Settings,
   ShieldAlert,
@@ -93,9 +93,9 @@ const CTAS: CtaItem[] = [
     category: "team",
   },
   {
-    href: "/integrations",
-    icon: Plug,
-    title: "Intégrations",
+    href: "/campaigns",
+    icon: Megaphone,
+    title: "Campagnes",
     description: "Guides vidéo et configuration WhatsApp / email.",
     accent: "brand",
     category: "account",
@@ -125,7 +125,7 @@ const CATEGORIES = [
   { id: "account" as const, label: "Compte" },
 ];
 
-const visibleCtas = CTAS.filter((cta) => !(INTEGRATIONS_LOCKED && cta.href === "/integrations"));
+const visibleCtas = CTAS.filter((cta) => !(INTEGRATIONS_LOCKED && cta.href === "/campaigns"));
 
 const accentBg: Record<NonNullable<CtaItem["accent"]>, string> = {
   brand: "var(--dash-brand-soft)",

@@ -5,6 +5,8 @@ import BrandLogo from "@/components/brand/mascot";
 import { useAuth } from "@/lib/auth";
 import { useLogout } from "@/api";
 import { useShopBranding } from "@/hooks/use-branding";
+import { useCurrentTenant } from "@/lib/tenant-context";
+import { employeeLoginPath, getWorkerTenantSlug } from "@/lib/scoped-routes";
 
 const tabs = [
   { path: "/", label: "Home", icon: Home },
@@ -21,14 +23,16 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
   const [location, setLocation] = useLocation();
   const { logout } = useAuth();
   const logoutMutation = useLogout();
-  const branding = useShopBranding();
+  const { slug } = useCurrentTenant();
+  const resolvedSlug = slug ?? getWorkerTenantSlug();
+  const branding = useShopBranding(resolvedSlug ?? undefined);
 
   const handleLogout = async () => {
     try {
       await logoutMutation.mutateAsync();
     } finally {
       logout();
-      setLocation("~/employee");
+      setLocation(`~${employeeLoginPath(resolvedSlug)}`);
     }
   };
 

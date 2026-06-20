@@ -16,9 +16,9 @@ import {
   CreditCard,
   PanelLeftClose,
   PanelLeft,
-  Plug,
+  Megaphone,
   WalletCards,
-  Lock,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import SidebarTrialStatus from "@/components/billing/sidebar-trial-status";
@@ -28,12 +28,14 @@ import { useLogout, useGetSettings } from "@/api";
 import { useShopBranding } from "@/hooks/use-branding";
 import { useShopSettingsRealtime } from "@/hooks/use-shop-settings-realtime";
 import { INTEGRATIONS_LOCKED } from "@/lib/integration-tutorials";
-import { headerItem, headerStagger, staggerContainer, staggerItem } from "@/lib/motion";
+import { headerStagger, staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/lib/i18n/locale-context";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 
 import DashboardTour from "@/components/dashboard/dashboard-tour";
+import DashboardTopbarSearch from "@/components/dashboard/dashboard-topbar-search";
+import { useDashboardTour } from "@/lib/dashboard-tour-context";
 
 const SIDEBAR_COLLAPSED_KEY = "dash-sidebar-collapsed";
 
@@ -44,7 +46,7 @@ const TOUR_IDS: Record<string, string> = {
   "/settings": "nav-settings",
   "/billing": "nav-billing",
   "/ccard": "nav-ccard",
-  "/integrations": "nav-integrations",
+  "/campaigns": "nav-campaigns",
 };
 
 const navItems: { labelKey: string; path: string; icon: LucideIcon; locked?: boolean }[] = [
@@ -58,9 +60,9 @@ const navItems: { labelKey: string; path: string; icon: LucideIcon; locked?: boo
   { labelKey: "dashboard.nav.workers", path: "/workers", icon: Users },
   { labelKey: "dashboard.nav.loyaltyCard", path: "/ccard", icon: WalletCards },
   {
-    labelKey: "dashboard.nav.integrations",
-    path: "/integrations",
-    icon: Plug,
+    labelKey: "dashboard.nav.campaigns",
+    path: "/campaigns",
+    icon: Megaphone,
     locked: INTEGRATIONS_LOCKED,
   },
   { labelKey: "dashboard.nav.billing", path: "/billing", icon: CreditCard },
@@ -125,7 +127,7 @@ function NavLinks({
         <Icon strokeWidth={2} />
         <span className="flex-1">{label}</span>
         {!collapsed && <span className="dash-nav-soon">{t("common.comingSoon")}</span>}
-        <Lock className="dash-nav-lock-icon" size={14} aria-hidden />
+        <Sparkles className="dash-nav-soon-icon" size={16} aria-hidden />
       </span>
     ) : (
       <Link
@@ -177,7 +179,6 @@ function SidebarFooter({ onLogout, collapsed }: { onLogout: () => void; collapse
   return (
     <div className="dash-sidebar-footer">
       <SidebarTrialStatus />
-      <LanguageSwitcher variant="compact" className="mb--2 w-full" />
       <button
         type="button"
         className="dash-logout-btn"
@@ -194,18 +195,23 @@ function SidebarFooter({ onLogout, collapsed }: { onLogout: () => void; collapse
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const { t } = useLocale();
+  const { registerOpenMobileNav } = useDashboardTour();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
   });
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
   const logoutMutation = useLogout();
   useShopSettingsRealtime();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    registerOpenMobileNav(() => setMobileOpen(true));
+  }, [registerOpenMobileNav]);
 
   const handleLogout = async () => {
     try {
@@ -217,8 +223,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const toggleSidebar = () => setSidebarCollapsed((c) => !c);
-
-  const currentPage = navItems.find((item) => location === dashboardPath(item.path));
 
   return (
     <div className="dash-shell">
@@ -279,14 +283,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               {sidebarCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
             </button>
-            <div className="min-w-0 flex-1">
-              <motion.p className="dash-topbar-title" variants={headerItem}>
-                {currentPage ? t(currentPage.labelKey) : t("dashboard.sidebar.dashboard")}
-              </motion.p>
-              <motion.p className="dash-topbar-sub" variants={headerItem}>
-                {user?.fullName}
-              </motion.p>
-            </div>
+            <DashboardTopbarSearch className="flex-1 min-w-0 max-w-xl" />
+            <LanguageSwitcher variant="circle" className="dash-topbar-lang shrink-0" />
           </motion.header>
 
           <main id="main-content" className="dash-content">

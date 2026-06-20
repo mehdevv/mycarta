@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { Loader2, Sparkles, Wand2 } from "lucide-react";
 import { useAiCardDesign } from "@/api/card-ai";
+import { useAiPromptQuota } from "@/hooks/use-ai-prompt-quota";
 import { useToast } from "@/hooks/use-toast";
 import { uploadTenantAsset } from "@/lib/upload-tenant-asset";
 import type { CardEditorState } from "@/components/fidelity/card-editor-sidebar";
@@ -33,6 +35,7 @@ export default function AiCardDesigner({
   const [prompt, setPrompt] = useState("");
   const aiDesign = useAiCardDesign();
   const { toast } = useToast();
+  const { quota, consume } = useAiPromptQuota(limits.planId, tenantId);
 
   const handleGenerate = async () => {
     const trimmed = prompt.trim();
@@ -40,6 +43,24 @@ export default function AiCardDesigner({
       toast({
         title: "Description trop courte",
         description: "Décrivez le style souhaité en quelques mots.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (quota.exhausted) {
+      toast({
+        title: "Quota journalier atteint",
+        description: `Essai gratuit : ${quota.limit} générations IA par jour. Passez à un plan payant pour continuer.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!consume()) {
+      toast({
+        title: "Quota journalier atteint",
+        description: "Réessayez demain ou passez à un plan payant.",
         variant: "destructive",
       });
       return;
@@ -99,10 +120,20 @@ export default function AiCardDesigner({
         <span className="dash-ai-card-icon" aria-hidden>
           <Sparkles size={16} />
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h3 className="dash-ai-card-title">Assistant IA</h3>
           <p className="dash-ai-card-desc">Décrivez le style — l&apos;IA applique couleurs et fond.</p>
         </div>
+        {quota.isLimited && (
+          <span
+            className={cn(
+              "dash-ai-card-quota",
+              quota.exhausted && "dash-ai-card-quota--exhausted",
+            )}
+          >
+            {quota.used}/{quota.limit} / jour
+          </span>
+        )}
       </div>
 
       <textarea
@@ -111,7 +142,7 @@ export default function AiCardDesigner({
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         placeholder="Ex. Carte minimaliste bleu marine et argent pour une boutique de mode…"
-        disabled={aiDesign.isPending}
+        disabled={aiDesign.isPending || quota.exhausted}
         maxLength={1200}
       />
 
@@ -121,7 +152,7 @@ export default function AiCardDesigner({
             key={example}
             type="button"
             className="dash-ai-card-chip"
-            disabled={aiDesign.isPending}
+            disabled={aiDesign.isPending || quota.exhausted}
             onClick={() => setPrompt(example)}
           >
             {example.length > 42 ? `${example.slice(0, 42)}…` : example}
@@ -135,19 +166,30 @@ export default function AiCardDesigner({
         </p>
       )}
 
-      <button
-        type="button"
-        className={cn("dash-btn-primary dash-ai-card-btn", aiDesign.isPending && "opacity-80")}
-        disabled={aiDesign.isPending || !prompt.trim()}
-        onClick={() => void handleGenerate()}
-      >
-        {aiDesign.isPending ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Wand2 className="h-4 w-4" />
-        )}
-        {aiDesign.isPending ? "Génération…" : "Générer avec l'IA"}
-      </button>
+      {quota.exhausted ? (
+        <div className="dash-ai-card-quota-block">
+          <p className="dash-ai-card-note">
+            Vous avez utilisé vos {quota.limit} prompts IA aujourd&apos;hui. Le quota se réinitialise demain.
+          </p>
+          <Link href="/dashboard/billing" className="dash-btn-secondary dash-ai-card-btn no-underline">
+            Passer à un plan payant
+          </Link>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={cn("dash-btn-primary dash-ai-card-btn", aiDesign.isPending && "opacity-80")}
+          disabled={aiDesign.isPending || !prompt.trim()}
+          onClick={() => void handleGenerate()}
+        >
+          {aiDesign.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Wand2 className="h-4 w-4" />
+          )}
+          {aiDesign.isPending ? "Génération…" : "Générer avec l'IA"}
+        </button>
+      )}
     </section>
   );
 }

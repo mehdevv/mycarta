@@ -11,6 +11,7 @@ import { ArrowLeft, CheckCircle, Gift, QrCode, Sparkles } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { normalizeCardCode } from "@/lib/card-code";
 import { useClientI18n } from "@/hooks/use-client-i18n";
+import { resolveClientCardPath } from "@/lib/scoped-routes";
 
 function RewardCelebration({ label, description }: { label: string; description: string }) {
   return (
@@ -110,7 +111,7 @@ export default function RewardClaim() {
               <Button
                 className="w-full h-12 rounded-xl"
                 variant="outline"
-                onClick={() => navigate(code ? `/card/${code}` : "/client")}
+                onClick={() => navigate(resolveClientCardPath(code))}
               >
                 {t("backToMyCard")}
               </Button>
@@ -123,7 +124,7 @@ export default function RewardClaim() {
 
   const earnedDate = new Date(reward.createdAt).toLocaleDateString(dateLocale, { dateStyle: "medium" });
   const isRedeemed = Boolean(reward.redeemedAt);
-  const backHref = `/card/${reward.cardCode}`;
+  const backHref = resolveClientCardPath(reward.cardCode);
 
   return (
     <ClientShell primaryColor={reward.primaryColor}>

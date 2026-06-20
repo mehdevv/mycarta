@@ -16,7 +16,7 @@ import { useClientI18n } from "@/hooks/use-client-i18n";
 import { useEffect } from "react";
 import { useShopBranding, normalizeAssetUrl, resolveBusinessLogo } from "@/hooks/use-branding";
 import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
-import { PLATFORM } from "@/lib/platform";
+import { rememberClientTenantSlug, clientCardPath } from "@/lib/scoped-routes";
 
 export default function CardView() {
   const [, slugParams] = useRoute("/:slug/card/:code");
@@ -30,6 +30,10 @@ export default function CardView() {
   const { data: tenantMeta, isLoading: tenantMetaLoading } = useGetTenantBySlug(tenantSlug || undefined);
   const tenantId = (tenantMeta?.id as string) ?? undefined;
 
+  useEffect(() => {
+    if (tenantSlug) rememberClientTenantSlug(tenantSlug);
+  }, [tenantSlug]);
+
   const { t, lang } = useClientI18n();
   const branding = useShopBranding(tenantSlug || undefined);
 
@@ -38,9 +42,8 @@ export default function CardView() {
     tenantMeta?.logoUrl as string | undefined,
   );
   const businessName =
-    branding.businessName !== PLATFORM.name
-      ? branding.businessName
-      : String(tenantMeta?.businessName ?? tenantMeta?.name ?? branding.businessName);
+    branding.businessName ||
+    String(tenantMeta?.businessName ?? tenantMeta?.name ?? "");
 
   const { data: card, isLoading, error } = useGetClientCard(code, {
     query: { enabled: !!code },
@@ -74,6 +77,9 @@ export default function CardView() {
     );
   }
 
+  const enrolHref =
+    tenantSlug ? clientEnrolPath(tenantSlug) : getClientTenantSlug() ? clientEnrolPath(getClientTenantSlug()!) : null;
+
   if (error || !card) {
     return (
       <ClientShell>
@@ -86,9 +92,11 @@ export default function CardView() {
           <div className="text-center p-8 bg-white/90 backdrop-blur rounded-3xl shadow-lg max-w-sm w-full">
             <h2 className="text-xl font-bold mb-2">{t("cardNotFound")}</h2>
             <p className="text-muted-foreground text-sm">{t("cardNotFoundDesc")}</p>
-            <Button className="mt-6 w-full rounded-xl" variant="outline" asChild>
-              <Link href="/client">{t("getNewCard")}</Link>
-            </Button>
+            {enrolHref && (
+              <Button className="mt-6 w-full rounded-xl" variant="outline" asChild>
+                <Link href={enrolHref}>{t("getNewCard")}</Link>
+              </Button>
+            )}
           </div>
         </motion.div>
       </ClientShell>

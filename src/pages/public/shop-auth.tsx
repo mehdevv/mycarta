@@ -248,8 +248,7 @@ export default function ShopAuthPage() {
       description: t("auth.toast.workerAccountDesc"),
       variant: "destructive",
     });
-    setLocation("~/client");
-  }, [authLoading, isAuthenticated, user, setLocation, logout, toast]);
+  }, [authLoading, isAuthenticated, user, logout, toast, t]);
 
   const loginForm = useForm<z.infer<ReturnType<typeof loginSchema>>>({
     resolver: zodResolver(loginSchema(t)),

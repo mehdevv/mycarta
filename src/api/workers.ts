@@ -1,6 +1,7 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { invokeFunction, supabase } from "@/lib/supabase";
 import type { Worker } from "./types";
+import { getListActivitiesQueryKey, logTenantActivity } from "./activities";
 
 export const getListWorkersQueryKey = () => ["workers"] as const;
 
@@ -40,14 +41,46 @@ export function useListWorkers() {
 }
 
 export function useCreateWorker() {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: async ({ data }: { data: { fullName: string; email: string; password: string } }) => {
+    mutationFn: async ({ data }: { data: { fullName: string; password: string } }) => {
       await invokeFunction("create-worker", data);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey() });
+    },
+  });
+}
+
+export function useUpdateWorkerPassword() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ workerId, password }: { workerId: string; password: string }) => {
+      await invokeFunction("update-worker-password", { workerId, password });
+    },
+    onSuccess: async (_data, variables) => {
+      const { data: worker } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", variables.workerId)
+        .maybeSingle();
+      const name = worker?.full_name ?? "Worker";
+      await logTenantActivity({
+        kind: "worker.password_reset",
+        title: "Worker password reset",
+        detail: name,
+        metadata: { workerName: name },
+      });
+      void queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey() });
     },
   });
 }
 
 export function useUpdateWorker() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       const payload: Record<string, unknown> = {};
@@ -56,15 +89,46 @@ export function useUpdateWorker() {
 
       const { error } = await supabase.from("profiles").update(payload).eq("id", id);
       if (error) throw error;
+      return { id, data };
+    },
+    onSuccess: async (result) => {
+      if (result.data.isActive === false) {
+        const { data: worker } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", result.id)
+          .maybeSingle();
+        const name = worker?.full_name ?? "Worker";
+        await logTenantActivity({
+          kind: "worker.deactivated",
+          title: "Worker deactivated",
+          detail: name,
+          metadata: { workerName: name },
+        });
+        void queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey() });
+      }
     },
   });
 }
 
 export function useDeleteWorker() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({ id }: { id: string }) => {
+      const { data: worker } = await supabase.from("profiles").select("full_name").eq("id", id).maybeSingle();
       const { error } = await supabase.from("profiles").update({ is_active: false }).eq("id", id);
       if (error) throw error;
+      return worker?.full_name ?? "Worker";
+    },
+    onSuccess: async (name) => {
+      await logTenantActivity({
+        kind: "worker.deactivated",
+        title: "Worker deactivated",
+        detail: name,
+        metadata: { workerName: name },
+      });
+      void queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey() });
     },
   });
 }

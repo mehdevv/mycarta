@@ -11,6 +11,11 @@ export type PlanCapabilities = {
   apiAccess: boolean;
 };
 
+/** Daily / usage caps for features that stay unlimited on paid plans. */
+export type PlanQuotas = {
+  aiCardPromptsPerDay: number | null;
+};
+
 export interface PlanFeature {
   id: PlanId;
   name: string;
@@ -32,6 +37,15 @@ export interface PlanFeature {
   description: string;
   capabilities: PlanCapabilities;
 }
+
+const trialCaps: PlanCapabilities = {
+  aiCardBuilder: true,
+  cardTemplates: true,
+  exclusiveTemplates: true,
+  customCardBg: true,
+  whatsapp: true,
+  apiAccess: true,
+};
 
 const boutiqueCaps: PlanCapabilities = {
   aiCardBuilder: false,
@@ -81,11 +95,11 @@ export const PLANS: PlanFeature[] = [
     workerLimitLabel: "3",
     campaignLabel: "3 / mois",
     locationLabel: "1",
-    cardDesign: "Standard fixe",
+    cardDesign: "Toutes les fonctionnalités",
     support: "Email",
     supportResponse: "72h ouvrées",
-    description: `14 jours pour découvrir ${PLATFORM.name} — limites plan Boutique`,
-    capabilities: { ...boutiqueCaps },
+    description: `14 jours — accès complet à toutes les fonctionnalités, avec quotas d'essai`,
+    capabilities: { ...trialCaps },
   },
   {
     id: "boutique",
@@ -166,12 +180,23 @@ export const ADDONS = [
 
 const planMap = new Map(PLANS.map((p) => [p.id, p]));
 
+const PLAN_QUOTAS: Record<PlanId, PlanQuotas> = {
+  trial: { aiCardPromptsPerDay: 3 },
+  boutique: { aiCardPromptsPerDay: null },
+  maison: { aiCardPromptsPerDay: null },
+  prestige: { aiCardPromptsPerDay: null },
+};
+
 export function getPlan(planId: PlanId | string): PlanFeature {
   return planMap.get(planId as PlanId) ?? planMap.get("trial")!;
 }
 
 export function getPlanCapabilities(planId: PlanId | string): PlanCapabilities {
   return getPlan(planId).capabilities;
+}
+
+export function getPlanQuotas(planId: PlanId | string): PlanQuotas {
+  return PLAN_QUOTAS[planId as PlanId] ?? PLAN_QUOTAS.trial;
 }
 
 export function formatDzd(amount: number | null, customQuote = "Sur devis") {

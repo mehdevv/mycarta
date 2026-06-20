@@ -7,17 +7,21 @@ import { mapSettings } from "./mappers";
 export const getListClientsQueryKey = (params?: Record<string, unknown>) =>
   ["clients", params] as const;
 
-export function useListClients(params?: {
-  page?: number;
-  limit?: number;
-  search?: string;
-  status?: string;
-}) {
+export function useListClients(
+  params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  },
+  options?: { enabled?: boolean },
+) {
   const page = params?.page ?? 1;
   const limit = params?.limit ?? 20;
 
   return useQuery({
     queryKey: getListClientsQueryKey(params),
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       let query = supabase
         .from("clients")

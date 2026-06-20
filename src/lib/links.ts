@@ -22,7 +22,9 @@ export const EDGE_FUNCTION_NAMES = [
   "setup-owner",
   "enrol-client",
   "login-client",
+  "login-worker",
   "create-worker",
+  "update-worker-password",
   "purchase-scan",
   "confirm-purchase-scan",
 ] as const;
@@ -120,10 +122,20 @@ export const EDGE_FUNCTION_META: Record<
     source: "supabase/functions/login-client/index.ts",
     usedBy: "Customer sign in (/client → Sign in)",
   },
+  "login-worker": {
+    jwt: "off",
+    source: "supabase/functions/login-worker/index.ts",
+    usedBy: "Employee login (/:slug/employee)",
+  },
   "create-worker": {
     jwt: "on",
     source: "supabase/functions/create-worker/index.ts",
     usedBy: "Dashboard → Workers",
+  },
+  "update-worker-password": {
+    jwt: "on",
+    source: "supabase/functions/update-worker-password/index.ts",
+    usedBy: "Dashboard → Workers (edit password)",
   },
   "purchase-scan": {
     jwt: "on",

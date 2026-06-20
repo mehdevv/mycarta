@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { mapSettings, snakeCaseKeys } from "./mappers";
 import type { ShopSettings } from "./types";
 import { getTenantQueryKey } from "./tenant";
+import { getListActivitiesQueryKey, logTenantActivity } from "./activities";
 
 export const getGetSettingsQueryKey = (slug?: string) =>
   slug ? (["settings", slug] as const) : (["settings"] as const);
@@ -99,10 +100,15 @@ export function useUpdateSettings() {
 
       return mapSettings(row);
     },
-    onSuccess: (mapped, variables) => {
+    onSuccess: async (mapped, variables) => {
       queryClient.setQueryData(getGetSettingsQueryKey(), mapped);
       if (variables.syncTenantBranding) {
         queryClient.invalidateQueries({ queryKey: getTenantQueryKey() });
+        await logTenantActivity({
+          kind: "settings.branding_updated",
+          title: "Branding updated",
+        });
+        void queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey() });
       }
     },
   });

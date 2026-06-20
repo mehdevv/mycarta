@@ -19,6 +19,15 @@ verify_jwt = false
 [functions.login-client]
 verify_jwt = false
 
+[functions.login-worker]
+verify_jwt = false
+
+[functions.create-worker]
+verify_jwt = true
+
+[functions.update-worker-password]
+verify_jwt = true
+
 [functions.chargily-webhook]
 verify_jwt = false
 

@@ -84,6 +84,29 @@ export function useLogin() {
   });
 }
 
+export function useLoginWorker() {
+  return useMutation({
+    mutationFn: async ({
+      data,
+    }: {
+      data: { tenantSlug: string; fullName: string; password: string };
+    }) => {
+      const result = await invokeFunction<{
+        accessToken: string;
+        refreshToken: string;
+      }>("login-worker", data);
+
+      const { error } = await supabase.auth.setSession({
+        access_token: result.accessToken,
+        refresh_token: result.refreshToken,
+      });
+      if (error) throw error;
+
+      return { accessToken: result.accessToken };
+    },
+  });
+}
+
 export function useLogout() {
   return useMutation({
     mutationFn: async () => {

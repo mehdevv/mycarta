@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useLocation, useRoute } from "wouter";
-import { useLogin, useGetTenantBySlug } from "@/api";
+import { useLoginWorker, useGetTenantBySlug } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -11,10 +11,11 @@ import AuthShell from "@/components/auth/auth-shell";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { useShopBranding } from "@/hooks/use-branding";
+import { rememberWorkerTenantSlug } from "@/lib/scoped-routes";
 import { Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email("Adresse email invalide."),
+  fullName: z.string().min(2, "Nom requis (au moins 2 caractères)."),
   password: z.string().min(1, "Mot de passe requis."),
 });
 
@@ -24,7 +25,7 @@ export default function EmployeeLogin() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { login, logout, isAuthenticated, user } = useAuth();
-  const loginMutation = useLogin();
+  const loginMutation = useLoginWorker();
   const { data: tenantMeta, isLoading: tenantLoading } = useGetTenantBySlug(tenantSlug || undefined);
   const branding = useShopBranding(tenantSlug || undefined);
 
@@ -32,8 +33,12 @@ export default function EmployeeLogin() {
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { fullName: "", password: "" },
   });
+
+  useEffect(() => {
+    if (tenantSlug) rememberWorkerTenantSlug(tenantSlug);
+  }, [tenantSlug]);
 
   useEffect(() => {
     if (!isAuthenticated || !user) return;
@@ -53,11 +58,10 @@ export default function EmployeeLogin() {
     logout();
     toast({
       title: "Compte administrateur détecté",
-      description: "Connectez-vous via l'espace commerçant.",
+      description: "Ce compte ne peut pas se connecter ici. Utilisez l'espace commerçant de votre boutique.",
       variant: "destructive",
     });
-    setLocation("~/shop");
-  }, [isAuthenticated, user, tenantId, setLocation, logout, toast]);
+  }, [isAuthenticated, user, tenantId, logout, toast]);
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     if (!tenantSlug || !tenantId) {
@@ -65,11 +69,17 @@ export default function EmployeeLogin() {
       return;
     }
     try {
-      const response = await loginMutation.mutateAsync({ data: values });
+      const response = await loginMutation.mutateAsync({
+        data: {
+          tenantSlug,
+          fullName: values.fullName.trim(),
+          password: values.password,
+        },
+      });
       login(response.accessToken);
       toast({ title: "Bon retour !" });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Identifiants incorrects";
+      const message = error instanceof Error ? error.message : "Nom ou mot de passe incorrect";
       toast({ title: "Connexion échouée", description: message, variant: "destructive" });
     }
   };
@@ -119,12 +129,12 @@ export default function EmployeeLogin() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
             control={form.control}
-            name="email"
+            name="fullName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>Nom</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="employe@exemple.com" {...field} />
+                  <Input placeholder="Votre nom" autoComplete="username" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -137,7 +147,7 @@ export default function EmployeeLogin() {
               <FormItem>
                 <FormLabel>Mot de passe</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="••••••••" {...field} />
+                  <Input type="password" placeholder="••••••••" autoComplete="current-password" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

@@ -1,6 +1,8 @@
-import { Users, UserCog, Megaphone, MapPin, ScanLine, Palette, Headphones } from "lucide-react";
-import { getPlan, type PlanId } from "@/lib/pricing";
+import { Users, UserCog, Megaphone, MapPin, ScanLine, Palette, Headphones, Sparkles } from "lucide-react";
+import { getPlan, getPlanQuotas, type PlanId } from "@/lib/pricing";
 import type { PlanUsage, TrialStatus } from "@/api/tenant";
+import { readAiPromptUsage } from "@/lib/plan-quotas";
+import { useCurrentTenant } from "@/lib/tenant-context";
 import { cn } from "@/lib/utils";
 
 type LimitRow = {
@@ -41,6 +43,8 @@ export function PlanLimitsCard({
   loading?: boolean;
 }) {
   const plan = getPlan(planId);
+  const { tenant } = useCurrentTenant();
+  const aiQuota = getPlanQuotas(planId).aiCardPromptsPerDay;
 
   const limits = {
     clientLimit: trialStatus?.clientLimit ?? plan.clientLimit,
@@ -89,6 +93,17 @@ export function PlanLimitsCard({
       used: usage?.scansToday ?? 0,
       limit: limits.scansPerDayLimit,
       icon: ScanLine,
+    });
+  }
+
+  if (aiQuota != null && tenant) {
+    rows.push({
+      key: "ai-prompts",
+      label: "Prompts IA carte",
+      used: readAiPromptUsage(tenant.id),
+      limit: aiQuota,
+      icon: Sparkles,
+      hint: "Aujourd'hui",
     });
   }
 

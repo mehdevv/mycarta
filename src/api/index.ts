@@ -11,3 +11,4 @@ export * from "./fraud";
 export * from "./tenant";
 export * from "./platform";
 export * from "./card-ai";
+export * from "./activities";

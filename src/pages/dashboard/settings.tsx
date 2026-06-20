@@ -1,32 +1,19 @@
 import SettingsPanel from "@/components/settings/settings-panel";
+import SettingsActivityLog from "@/components/settings/settings-activity-log";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { useGetSettings } from "@/api";
-import { useState, useEffect } from "react";
 
 export default function Settings() {
-  const { data: settings, isLoading } = useGetSettings();
-
-  const [business, setBusiness] = useState({
-    currency: "DZD",
-    timezone: "Africa/Algiers",
-    clientLanguage: "fr" as "fr" | "en",
-  });
-
-  useEffect(() => {
-    if (settings) {
-      setBusiness({
-        currency: settings.currency ?? "DZD",
-        timezone: settings.timezone ?? "Africa/Algiers",
-        clientLanguage: settings.clientLanguage ?? "fr",
-      });
-    }
-  }, [settings]);
+  const { isLoading } = useGetSettings();
 
   if (isLoading) {
     return (
       <div className="dash-settings-page">
         <div className="dash-skeleton h-16 w-64 mb-6" />
-        <div className="dash-skeleton h-[520px] rounded-2xl max-w-3xl" />
+        <div className="dash-settings-layout">
+          <div className="dash-skeleton h-[520px] rounded-2xl" />
+          <div className="dash-skeleton h-[520px] rounded-2xl" />
+        </div>
       </div>
     );
   }
@@ -36,9 +23,12 @@ export default function Settings() {
       <DashboardPageHeader
         eyebrow="Configuration"
         title="Paramètres"
-        description="Gérez votre compte, vos préférences commerce et votre sécurité."
+        description="Gérez votre compte et votre sécurité."
       />
-      <SettingsPanel business={business} onBusinessChange={setBusiness} />
+      <div className="dash-settings-layout">
+        <SettingsPanel />
+        <SettingsActivityLog />
+      </div>
     </div>
   );
 }

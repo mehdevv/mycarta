@@ -50,5 +50,7 @@ export function usePlatformBranding() {
     primaryColor: PLATFORM.primaryColor,
     secondaryColor: PLATFORM.secondaryColor,
     supportEmail: PLATFORM.supportEmail,
+    socialYoutube: PLATFORM.social.youtube,
+    socialInstagram: PLATFORM.social.instagram,
   };
 }

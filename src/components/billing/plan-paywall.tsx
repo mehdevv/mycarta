@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useGetTrialStatus } from "@/api/tenant";
-import { PLANS } from "@/lib/pricing";
+import { getPlan } from "@/lib/pricing";
 import { Button } from "@/components/ui/button";
 
 type PlanPaywallProps = {
@@ -10,17 +10,16 @@ type PlanPaywallProps = {
 
 export default function PlanPaywall({ feature, children }: PlanPaywallProps) {
   const { data: status } = useGetTrialStatus();
-  const plan = PLANS.find((p) => p.id === status?.planId);
+  const caps = getPlan(status?.planId ?? "trial").capabilities;
 
   const blocked =
     feature === "whatsapp"
-      ? !plan?.whatsapp
+      ? !caps.whatsapp
       : feature === "api"
-        ? !plan?.apiAccess
-        : status?.planId === "trial";
+        ? !caps.apiAccess
+        : false;
 
   if (!blocked) return <>{children}</>;
-
   return (
     <div className="rounded-xl border border-dashed border-amber-500/40 bg-amber-500/5 p-6 text-center space-y-3">
       <p className="text-sm text-muted-foreground">

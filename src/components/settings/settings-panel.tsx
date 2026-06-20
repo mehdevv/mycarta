@@ -10,29 +10,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useGetSettings, useUpdateSettings } from "@/api";
+import { useGetSettings } from "@/api";
 import { useDeleteTenantAccount } from "@/api/tenant";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
-import { useDashboardTour } from "@/lib/dashboard-tour-context";
 import { useCurrentTenant } from "@/lib/tenant-context";
 import { PLANS } from "@/lib/pricing";
-import { useLocale } from "@/lib/i18n/locale-context";
-import { LOCALE_LABELS } from "@/lib/i18n";
-import type { ClientLanguage } from "@/lib/client-i18n";
-
-type BusinessSettingsState = {
-  currency: string;
-  timezone: string;
-  clientLanguage: ClientLanguage;
-};
-
-type SettingsPanelProps = {
-  business: BusinessSettingsState;
-  onBusinessChange: (next: BusinessSettingsState) => void;
-};
-
+import { getListActivitiesQueryKey, logTenantActivity } from "@/api/activities";
+import { useQueryClient } from "@tanstack/react-query";
 const statusLabels: Record<string, string> = {
   trialing: "Essai",
   active: "Actif",
@@ -41,11 +27,10 @@ const statusLabels: Record<string, string> = {
   expired: "Expiré",
 };
 
-export default function SettingsPanel({ business, onBusinessChange }: SettingsPanelProps) {
+export default function SettingsPanel() {
   const { data: settings } = useGetSettings();
-  const { t } = useLocale();
-  const updateSettings = useUpdateSettings();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { user, logout } = useAuth();
   const { slug, tenant } = useCurrentTenant();
   const [, setLocation] = useLocation();
@@ -58,28 +43,8 @@ export default function SettingsPanel({ business, onBusinessChange }: SettingsPa
   const [deletePassword, setDeletePassword] = useState("");
   const [confirmSlug, setConfirmSlug] = useState("");
 
-  const patchBusiness = (partial: Partial<BusinessSettingsState>) =>
-    onBusinessChange({ ...business, ...partial });
-
   const planName = PLANS.find((p) => p.id === tenant?.planId)?.name ?? tenant?.planId ?? "—";
   const subStatus = tenant?.subscriptionStatus ?? "trialing";
-
-  const saveBusiness = async () => {
-    if (!settings) return;
-    try {
-      await updateSettings.mutateAsync({
-        id: settings.id,
-        data: {
-          currency: business.currency,
-          timezone: business.timezone,
-          clientLanguage: business.clientLanguage,
-        },
-      });
-      toast({ title: "Paramètres enregistrés" });
-    } catch {
-      toast({ title: "Échec de l'enregistrement", variant: "destructive" });
-    }
-  };
 
   const changePassword = async () => {
     if (newPassword.length < 8) {
@@ -96,6 +61,11 @@ export default function SettingsPanel({ business, onBusinessChange }: SettingsPa
       if (error) throw error;
       setNewPassword("");
       setConfirmPassword("");
+      await logTenantActivity({
+        kind: "security.password_changed",
+        title: "Password changed",
+      });
+      void queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey() });
       toast({ title: "Mot de passe mis à jour" });
     } catch (e) {
       toast({
@@ -176,73 +146,6 @@ export default function SettingsPanel({ business, onBusinessChange }: SettingsPa
             <dd className="dash-settings-value truncate">{user?.email ?? "—"}</dd>
           </div>
         </dl>
-      </div>
-
-      <div className="dash-settings-divider" />
-
-      <div className="dash-settings-block">
-        <div className="dash-settings-block-head">
-          <h2 className="dash-settings-block-title">Commerce</h2>
-          <p className="dash-settings-block-desc">Devise, fuseau horaire et langue affichée aux clients.</p>
-        </div>
-        <div className="dash-settings-fields">
-          <div className="dash-settings-field">
-            <label className="dash-settings-label" htmlFor="settings-currency">
-              Devise
-            </label>
-            <select
-              id="settings-currency"
-              className="dash-settings-input"
-              value={business.currency}
-              onChange={(e) => patchBusiness({ currency: e.target.value })}
-            >
-              <option value="DZD">DZD — Dinar algérien</option>
-              <option value="EUR">EUR — Euro</option>
-              <option value="USD">USD — Dollar</option>
-            </select>
-          </div>
-          <div className="dash-settings-field">
-            <label className="dash-settings-label" htmlFor="settings-timezone">
-              Fuseau horaire
-            </label>
-            <select
-              id="settings-timezone"
-              className="dash-settings-input"
-              value={business.timezone}
-              onChange={(e) => patchBusiness({ timezone: e.target.value })}
-            >
-              <option value="Africa/Algiers">Africa/Algiers</option>
-              <option value="Europe/Paris">Europe/Paris</option>
-              <option value="UTC">UTC</option>
-            </select>
-          </div>
-          <div className="dash-settings-field">
-            <label className="dash-settings-label" htmlFor="settings-language">
-              {t("dashboard.settings.clientLanguage")}
-            </label>
-            <select
-              id="settings-language"
-              className="dash-settings-input"
-              value={business.clientLanguage}
-              onChange={(e) => patchBusiness({ clientLanguage: e.target.value as ClientLanguage })}
-            >
-              <option value="fr">{LOCALE_LABELS.fr}</option>
-              <option value="en">{LOCALE_LABELS.en}</option>
-              <option value="ar">{LOCALE_LABELS.ar}</option>
-            </select>
-          </div>
-        </div>
-        <div className="dash-settings-footer">
-          <button
-            type="button"
-            className="dash-btn-primary dash-settings-save-btn"
-            onClick={() => void saveBusiness()}
-            disabled={updateSettings.isPending}
-          >
-            {updateSettings.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Enregistrer le commerce
-          </button>
-        </div>
       </div>
 
       <div className="dash-settings-divider" />

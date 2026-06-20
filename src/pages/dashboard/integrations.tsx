@@ -41,8 +41,8 @@ export default function IntegrationsPage() {
   return (
     <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-10">
       <DashboardPageHeader
-        eyebrow="Connexions"
-        title="Intégrations"
+        eyebrow="Marketing"
+        title="Campagnes"
         description="Guides vidéo et configuration des API WhatsApp et email pour vos campagnes."
       />
 
@@ -53,13 +53,13 @@ export default function IntegrationsPage() {
               <Lock className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="dash-integrations-lock-title">Configuration API — bientôt disponible</p>
+              <p className="dash-integrations-lock-title">Configuration API — Soon</p>
               <p className="dash-integrations-lock-desc">
                 Les champs de connexion seront activés prochainement. En attendant, suivez les guides
                 vidéo ci-dessous pour préparer vos comptes Meta et votre domaine email.
               </p>
             </div>
-            <span className="dash-badge dash-badge--warning shrink-0">À venir</span>
+            <span className="dash-badge dash-badge--warning shrink-0">Soon</span>
           </div>
         </motion.article>
       )}

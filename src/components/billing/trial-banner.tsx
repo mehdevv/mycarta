@@ -32,8 +32,8 @@ export default function TrialBanner() {
         <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
           <Clock className="h-4 w-4 shrink-0" />
           <span>
-            Essai gratuit — <strong>{trialStatus.daysLeft} jour(s)</strong> restant(s) · 100 clients ·
-            50 scans/jour
+            Essai gratuit — <strong>{trialStatus.daysLeft} jour(s)</strong> restant(s) · accès complet avec
+            quotas (ex. 3 prompts IA / jour)
           </span>
         </div>
         <Link href="/billing">

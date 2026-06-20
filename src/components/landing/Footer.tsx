@@ -1,4 +1,5 @@
 import { Link, useLocation, useSearch } from "wouter";
+import { Instagram, Mail, Youtube } from "lucide-react";
 import BrandLogo from "@/components/brand/mascot";
 import { usePlatformBranding } from "@/hooks/use-branding";
 import { useLocale } from "@/lib/i18n/locale-context";
@@ -70,6 +71,34 @@ export function LandingFooter() {
             >
               {platform.supportEmail}
             </a>
+            <div className="landing-footer-social" aria-label={t("landing.footer.followUs")}>
+              <a
+                href={`mailto:${platform.supportEmail}`}
+                className="landing-footer-social-link email"
+                aria-label={t("landing.footer.socialEmail")}
+                dir="ltr"
+              >
+                <Mail size={18} strokeWidth={1.75} aria-hidden />
+              </a>
+              <a
+                href={platform.socialYoutube}
+                className="landing-footer-social-link"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t("landing.footer.socialYoutube")}
+              >
+                <Youtube size={18} strokeWidth={1.75} aria-hidden />
+              </a>
+              <a
+                href={platform.socialInstagram}
+                className="landing-footer-social-link"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t("landing.footer.socialInstagram")}
+              >
+                <Instagram size={18} strokeWidth={1.75} aria-hidden />
+              </a>
+            </div>
           </div>
 
           <div>

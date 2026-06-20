@@ -33,10 +33,12 @@ import LegalPage from "@/pages/public/legal-page";
 import Setup from "@/pages/public/setup";
 import ShopAuthPage from "@/pages/public/shop-auth";
 import EmployeeLogin from "@/pages/public/employee-login";
+import EmployeePortalHint from "@/pages/public/employee-portal-hint";
 import ClientEnrol from "@/pages/public/client-enrol";
 import Enrol from "@/pages/public/enrol";
 import CardView from "@/pages/public/card";
 import RewardClaim from "@/pages/public/reward-claim";
+import { employeeLoginPath, getWorkerTenantSlug } from "@/lib/scoped-routes";
 
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import WorkerLayout from "@/components/layout/worker-layout";
@@ -139,14 +141,20 @@ function PlatformProtectedRoute({ component: Component }: { component: React.Com
 
 function WorkerProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { slug, isLoading } = useCurrentTenant();
-  const loginPath = slug ? `/${slug}/employee` : "/employee";
+  const { user, isLoading: authLoading } = useAuth();
+  const resolvedSlug = slug ?? getWorkerTenantSlug();
+  const loginPath = employeeLoginPath(resolvedSlug);
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
       </div>
     );
+  }
+
+  if (!user && !resolvedSlug) {
+    return <EmployeePortalHint />;
   }
 
   return <ProtectedRoute component={Component} role="worker" loginPath={loginPath} />;
@@ -167,12 +175,8 @@ function Router() {
       <Route path="/login">
         <Redirect to="~/shop" />
       </Route>
-      <Route path="/employee">
-        <Redirect to="~/client" />
-      </Route>
-      <Route path="/emloyee">
-        <Redirect to="~/client" />
-      </Route>
+      <Route path="/employee" component={EmployeePortalHint} />
+      <Route path="/emloyee" component={EmployeePortalHint} />
       <Route path="/client" component={FindShop} />
       <Route path="/setup" component={Setup} />
       <Route path="/enrol" component={Enrol} />
@@ -279,6 +283,9 @@ function Router() {
                 <ProtectedRoute component={CardEditorPage} role="owner" loginPath="/shop" />
               </Route>
               <Route path="/integrations">
+                <Redirect to="~/dashboard/campaigns" />
+              </Route>
+              <Route path="/campaigns">
                 {INTEGRATIONS_LOCKED ? (
                   <Redirect to="~/dashboard" />
                 ) : (

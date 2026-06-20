@@ -13,10 +13,11 @@ import ClientShell, { ClientCard, ClientLoading } from "@/components/client/clie
 import BrandLogo from "@/components/brand/mascot";
 import { isCardCode, normalizeCardCode } from "@/lib/card-code";
 import { ArrowRight, Hash, Loader2, Smartphone, Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useClientI18n } from "@/hooks/use-client-i18n";
 import { resolveBusinessLogo } from "@/hooks/use-branding";
 import { useRoute } from "wouter";
+import { rememberClientTenantSlug, clientCardPath } from "@/lib/scoped-routes";
 
 type ClientEnrolProps = {
   tenantSlug?: string;
@@ -47,6 +48,10 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
     defaultValues: { fullName: "", phone: "" },
   });
 
+  useEffect(() => {
+    if (tenantSlug) rememberClientTenantSlug(tenantSlug);
+  }, [tenantSlug]);
+
   const primary = settings?.primaryColor ?? "#1A56DB";
   const secondary = settings?.secondaryColor ?? "#0E9F6E";
   const businessLogo = resolveBusinessLogo(
@@ -67,7 +72,7 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
         toast({ title: t("welcomeBack"), description: t("openingExisting") });
       }
       const cardSlug = response.tenantSlug ?? tenantSlug;
-      setLocation(`~/${cardSlug}/card/${response.cardCode}?new=1`);
+      setLocation(`~${clientCardPath(cardSlug, response.cardCode)}?new=1`);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : t("loading");
       toast({ title: t("couldNotCreate"), description: message, variant: "destructive" });
@@ -84,7 +89,7 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
       });
       return;
     }
-    setLocation(`~/${tenantSlug}/card/${code}`);
+    setLocation(`~${clientCardPath(tenantSlug, code)}`);
   };
 
   if (!tenantSlug && !langLoading) {
