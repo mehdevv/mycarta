@@ -3,6 +3,7 @@ import IntegrationVideoCard from "@/components/integrations/integration-video-ca
 import { APP_TUTORIAL_CHANNEL_URL, APP_TUTORIAL_VIDEOS } from "@/lib/app-tutorials";
 import { useLocale } from "@/lib/i18n/locale-context";
 import { cn } from "@/lib/utils";
+import tutorialsWaveBg from "@/assets/Untitled design (7).png";
 
 type AppTutorialVideosProps = {
   variant: "landing" | "dashboard";
@@ -14,6 +15,35 @@ export default function AppTutorialVideos({ variant, className }: AppTutorialVid
   const prefix = variant === "landing" ? "landing.tutorials" : "dashboard.overview.tutorials";
 
   if (APP_TUTORIAL_VIDEOS.length === 0) return null;
+
+  const videoGrid = (
+    <div
+      className={cn(
+        "dash-video-grid",
+        variant === "landing" && "landing-tutorials-grid",
+        APP_TUTORIAL_VIDEOS.length === 1 && "dash-video-grid--single",
+      )}
+    >
+      {APP_TUTORIAL_VIDEOS.map((video, index) => (
+        <IntegrationVideoCard
+          key={video.id}
+          tutorial={{
+            id: video.id,
+            youtubeId: video.youtubeId,
+            duration: video.duration,
+            title:
+              index === 0
+                ? t(`${prefix}.videoTitle`)
+                : t(`${prefix}.videoTitleNumbered`, { number: index + 1 }),
+            description:
+              index === 0
+                ? t(`${prefix}.videoDescription`)
+                : t(`${prefix}.videoDescriptionNumbered`, { number: index + 1 }),
+          }}
+        />
+      ))}
+    </div>
+  );
 
   return (
     <section
@@ -55,32 +85,16 @@ export default function AppTutorialVideos({ variant, className }: AppTutorialVid
           </a>
         </div>
 
-        <div
-          className={cn(
-            "dash-video-grid",
-            variant === "landing" && "landing-tutorials-grid",
-            APP_TUTORIAL_VIDEOS.length === 1 && "dash-video-grid--single",
-          )}
-        >
-          {APP_TUTORIAL_VIDEOS.map((video, index) => (
-            <IntegrationVideoCard
-              key={video.id}
-              tutorial={{
-                id: video.id,
-                youtubeId: video.youtubeId,
-                duration: video.duration,
-                title:
-                  index === 0
-                    ? t(`${prefix}.videoTitle`)
-                    : t(`${prefix}.videoTitleNumbered`, { number: index + 1 }),
-                description:
-                  index === 0
-                    ? t(`${prefix}.videoDescription`)
-                    : t(`${prefix}.videoDescriptionNumbered`, { number: index + 1 }),
-              }}
-            />
-          ))}
-        </div>
+        {variant === "landing" ? (
+          <div className="landing-tutorials-media">
+            <div className="landing-tutorials-wave" aria-hidden>
+              <img src={tutorialsWaveBg} alt="" loading="lazy" decoding="async" />
+            </div>
+            {videoGrid}
+          </div>
+        ) : (
+          videoGrid
+        )}
       </div>
     </section>
   );
