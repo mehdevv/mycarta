@@ -281,7 +281,7 @@ function TourCard({
 }
 
 export default function DashboardTour() {
-  const { isOpen, closeTour } = useDashboardTour();
+  const { isOpen, closeTour, openVideoTutorialAfterTour } = useDashboardTour();
   const { onboardingComplete, dashboardTutorialComplete } = useCurrentTenant();
   const completeTutorial = useCompleteDashboardTutorial();
   const queryClient = useQueryClient();
@@ -352,6 +352,7 @@ export default function DashboardTour() {
 
   const finish = async () => {
     measureTokenRef.current += 1;
+    const wasFirstCompletion = !dashboardTutorialComplete;
     try {
       if (!dashboardTutorialComplete) {
         await completeTutorial.mutateAsync();
@@ -361,6 +362,9 @@ export default function DashboardTour() {
       closeTour();
       setStepIndex(0);
       setRect(null);
+      if (wasFirstCompletion) {
+        openVideoTutorialAfterTour();
+      }
     }
   };
 

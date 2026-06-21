@@ -13,6 +13,7 @@ import { DashboardStatCard } from "@/components/dashboard/dashboard-stat-card";
 import DashboardQrHub from "@/components/dashboard/dashboard-qr-hub";
 import DashboardSetupChecklist from "@/components/dashboard/dashboard-setup-checklist";
 import DashboardDiscoverCtas from "@/components/dashboard/dashboard-discover-ctas";
+import { DashboardVideoTutorialChip } from "@/components/dashboard/dashboard-video-tutorial";
 import { staggerContainer, staggerItem } from "@/lib/motion";
 
 function useHasPendingSetup(analytics: AnalyticsOverview | undefined) {
@@ -92,7 +93,12 @@ export default function DashboardOverview() {
             ? "Statistiques en un coup d'œil, puis checklist, QR et accès rapides."
             : "Statistiques en un coup d'œil, QR et accès rapides."
         }
-        action={<DashboardTutorialButton />}
+        action={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <DashboardVideoTutorialChip />
+            <DashboardTutorialButton />
+          </div>
+        }
       />
 
       {analytics.fraudAlertsToday > 0 && (

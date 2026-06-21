@@ -67,6 +67,18 @@ export const messages: Messages = {
       trustReady: "جاهز في 10 دقائق",
       imageAlt: "عميل يمسح رمز QR للولاء عند كاونتر المقهى",
     },
+    tutorials: {
+      eyebrow: "دروس فيديو",
+      title: "تعلّم استخدام كارتا",
+      description:
+        "أدلة خطوة بخطوة: الإعداد، بطاقة الولاء، العملاء، المكافآت ولوحة التحكم.",
+      videoTitle: "الدليل الكامل لكارتا",
+      videoDescription:
+        "أنشئ حسابك، اضبط برنامج الولاء وأطلق بطاقتك الرقمية.",
+      videoTitleNumbered: "درس فيديو {number}",
+      videoDescriptionNumbered: "دليل فيديو لكارتا.",
+      watchChannel: "قناة يوتيوب",
+    },
     problem: {
       eyebrow: "المشكلة",
       title: "بطاقات الولاء الورقية تكلفك المال",
@@ -396,6 +408,22 @@ export const messages: Messages = {
       inactive: "غير نشط",
       noResults: "لا توجد نتائج",
       typeToSearch: "اكتب للبحث أو تصفح الصفحات",
+    },
+    overview: {
+      tutorials: {
+        eyebrow: "دروس فيديو",
+        title: "أدلة فيديو كارتا",
+        description: "أعد مشاهدة الدليل الكامل أو شاركه مع فريقك.",
+        videoTitle: "الدليل الكامل لكارتا",
+        videoDescription:
+          "الإعداد، QR العميل، المكافآت، الموظفون ولوحة التحكم — خطوة بخطوة.",
+        videoTitleNumbered: "درس فيديو {number}",
+        videoDescriptionNumbered: "دليل فيديو لكارتا.",
+        watchChannel: "قناة يوتيوب",
+        chipLabel: "دليل فيديو",
+        chipHint: "الدليل الكامل",
+        watchVideo: "مشاهدة دليل الفيديو",
+      },
     },
   },
   notFound: {

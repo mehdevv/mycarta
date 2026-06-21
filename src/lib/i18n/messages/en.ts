@@ -67,6 +67,18 @@ export const messages: Messages = {
       trustReady: "Ready in 10 min",
       imageAlt: "Customer scanning a loyalty QR code at a café counter",
     },
+    tutorials: {
+      eyebrow: "Video tutorials",
+      title: "Learn how to use Carta",
+      description:
+        "Step-by-step guides: setup, loyalty card, clients, rewards, and dashboard.",
+      videoTitle: "Full Carta tutorial",
+      videoDescription:
+        "Create your account, set up your loyalty program, and launch your digital card.",
+      videoTitleNumbered: "Video tutorial {number}",
+      videoDescriptionNumbered: "Carta video guide.",
+      watchChannel: "YouTube channel",
+    },
     problem: {
       eyebrow: "The problem",
       title: "Paper loyalty is costing you money",
@@ -396,6 +408,22 @@ export const messages: Messages = {
       inactive: "Inactive",
       noResults: "No results",
       typeToSearch: "Type to search or browse pages",
+    },
+    overview: {
+      tutorials: {
+        eyebrow: "Video tutorials",
+        title: "Carta video guides",
+        description: "Rewatch the full tutorial or share it with your team.",
+        videoTitle: "Full Carta tutorial",
+        videoDescription:
+          "Setup, client QR, rewards, workers, and dashboard — step by step.",
+        videoTitleNumbered: "Video tutorial {number}",
+        videoDescriptionNumbered: "Carta video guide.",
+        watchChannel: "YouTube channel",
+        chipLabel: "Video guide",
+        chipHint: "Full tutorial",
+        watchVideo: "Watch video tutorial",
+      },
     },
   },
   notFound: {

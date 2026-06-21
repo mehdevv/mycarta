@@ -2802,6 +2802,70 @@ html:has(.landing-page) {
     opacity: 0;
     animation: landingFadeUp 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
+
+  .landing-tutorials {
+    padding: 48px 0 40px;
+    background: var(--landing-bg);
+    border-bottom: 1px solid var(--landing-border);
+  }
+
+  .landing-tutorials-head {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  @media (min-width: 768px) {
+    .landing-tutorials-head {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+    }
+  }
+
+  .landing-tutorials .landing-tutorials-desc,
+  .landing-tutorials-head .landing-h2 {
+    margin: 0;
+  }
+
+  .landing-tutorials-desc {
+    font: 400 16px/1.55 var(--landing-font);
+    color: var(--landing-text-secondary);
+    max-width: 42rem;
+  }
+
+  .landing-tutorials-head .landing-eyebrow {
+    margin-bottom: 8px;
+  }
+
+  .landing-tutorials-head .landing-h2 {
+    margin-bottom: 8px;
+  }
+
+  .landing-tutorials-channel {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    font: 600 13px/1 var(--landing-font);
+    color: var(--landing-brand);
+    background: var(--landing-brand-soft);
+    border-radius: var(--landing-radius-pill);
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .landing-tutorials-channel:hover {
+    background: #dbeafe;
+    color: var(--landing-brand-hover);
+  }
+
+  .landing-tutorials-grid.dash-video-grid--single {
+    max-width: 920px;
+    margin-inline: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

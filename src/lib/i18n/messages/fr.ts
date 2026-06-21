@@ -65,6 +65,18 @@ export const messages = {
       trustReady: "Prêt en 10 min",
       imageAlt: "Client scannant un QR code fidélité au comptoir d'un café",
     },
+    tutorials: {
+      eyebrow: "Tutoriels vidéo",
+      title: "Apprenez à utiliser Carta",
+      description:
+        "Guides pas à pas : configuration, carte fidélité, clients, récompenses et tableau de bord.",
+      videoTitle: "Tutoriel complet Carta",
+      videoDescription:
+        "Créez votre compte, configurez votre programme de fidélité et lancez votre carte digitale.",
+      videoTitleNumbered: "Tutoriel vidéo {number}",
+      videoDescriptionNumbered: "Guide vidéo pour maîtriser Carta.",
+      watchChannel: "Chaîne YouTube",
+    },
     problem: {
       eyebrow: "Le problème",
       title: "La fidélité papier vous fait perdre de l'argent",
@@ -397,6 +409,22 @@ export const messages = {
       inactive: "Inactif",
       noResults: "Aucun résultat",
       typeToSearch: "Tapez pour rechercher ou parcourez les pages",
+    },
+    overview: {
+      tutorials: {
+        eyebrow: "Tutoriels vidéo",
+        title: "Guides vidéo Carta",
+        description: "Reprenez le tutoriel complet ou partagez-le avec votre équipe.",
+        videoTitle: "Tutoriel complet Carta",
+        videoDescription:
+          "Configuration, QR client, récompenses, employés et tableau de bord — étape par étape.",
+        videoTitleNumbered: "Tutoriel vidéo {number}",
+        videoDescriptionNumbered: "Guide vidéo Carta.",
+        watchChannel: "Chaîne YouTube",
+        chipLabel: "Guide vidéo",
+        chipHint: "Tutoriel complet",
+        watchVideo: "Voir le tutoriel vidéo",
+      },
     },
   },
   notFound: {
