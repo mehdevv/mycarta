@@ -1,7 +1,7 @@
 # Deploy ALL Supabase Edge Functions in one command.
 #
 # Prerequisites:
-#   1. Access token from the account that OWNS project qealyijgeosyvmfpojzq:
+#   1. Access token from the account that OWNS project dunmzwligaqhrpoeagap:
 #      https://supabase.com/dashboard/account/tokens
 #   2. Set env var:  $env:SUPABASE_ACCESS_TOKEN = "sbp_..."
 #   3. Run:          npm run deploy:functions
@@ -11,7 +11,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$ProjectRef = "qealyijgeosyvmfpojzq"
+$ProjectRef = "dunmzwligaqhrpoeagap"
 $Root = Split-Path -Parent $PSScriptRoot
 
 Set-Location $Root

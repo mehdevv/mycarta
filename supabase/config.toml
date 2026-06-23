@@ -1,7 +1,7 @@
-# Supabase CLI — linked project: qealyijgeosyvmfpojzq
+# Supabase CLI — linked project: dunmzwligaqhrpoeagap
 # Deploy all functions: npm run deploy:functions
 
-project_id = "qealyijgeosyvmfpojzq"
+project_id = "dunmzwligaqhrpoeagap"
 
 [api]
 enabled = true

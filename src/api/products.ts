@@ -5,13 +5,31 @@ import { getListActivitiesQueryKey, logTenantActivity } from "./activities";
 
 export const getListProductsQueryKey = () => ["products"] as const;
 
+async function resolveTenantId(): Promise<string> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("tenant_id")
+    .eq("id", user.id)
+    .single();
+
+  if (error || !profile?.tenant_id) throw new Error("Tenant not found");
+  return profile.tenant_id;
+}
+
 export function useListProducts() {
   return useQuery({
     queryKey: getListProductsQueryKey(),
     queryFn: async () => {
+      const tenantId = await resolveTenantId();
       const { data, error } = await supabase
         .from("products")
         .select("*")
+        .eq("tenant_id", tenantId)
         .eq("is_active", true)
         .order("name");
       if (error) throw error;
@@ -25,7 +43,9 @@ export function useCreateProduct() {
 
   return useMutation({
     mutationFn: async ({ data }: { data: { name: string; sku?: string; category?: string; price: number } }) => {
+      const tenantId = await resolveTenantId();
       const { error } = await supabase.from("products").insert({
+        tenant_id: tenantId,
         name: data.name,
         sku: data.sku || null,
         category: data.category || null,
@@ -33,7 +53,14 @@ export function useCreateProduct() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async (_, { data }) => {
+      await logTenantActivity({
+        kind: "product.added",
+        title: "Product added",
+        detail: data.name,
+        metadata: { productName: data.name },
+      });
+      void queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
       void queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey() });
     },
   });
