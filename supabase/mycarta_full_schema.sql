@@ -1,14 +1,19 @@
+﻿-- =============================================================================
+-- mycarta (Carta SaaS) — COMPLETE DATABASE SCHEMA
 -- =============================================================================
--- mycarta / LoyalQR -- FULL DATABASE MIGRATION (greenfield Supabase project)
--- =============================================================================
--- SUPERSEDED: use supabase/mycarta_full_schema.sql (complete, up to date).
--- This file is kept for reference; mycarta_full_schema.sql is the canonical copy.
--- =============================================================================
--- Run once in: Supabase Dashboard -> SQL Editor -> New query -> Run
--- Project: qealyijgeosyvmfpojzq (mycarta.online)
+-- Run once on an EMPTY Supabase project (greenfield only).
+-- Project: qealyijgeosyvmfpojzq (mycarta.online production)
 --
--- WARNING: For an EMPTY project only. Do not re-run on a populated database.
+-- Supabase Dashboard -> SQL Editor -> New query -> paste all -> Run
+--
+-- WARNING: Do NOT run on a database that already has tables/data.
+-- For existing DBs, use incremental migrations 002-016 or 017_carta_schema_catchup.sql
 -- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- FILE: migrations/001_saas_complete.sql
+-- -----------------------------------------------------------------------------
+
 -- mycarta SaaS â€” complete multi-tenant schema (greenfield Supabase project)
 -- Run this on a fresh project. Replaces single-tenant 001_initial.sql.
 
@@ -26,7 +31,6 @@ CREATE TABLE plans (
   worker_limit INT,
   campaign_limit INT,
   scans_per_day_limit INT,
-  location_limit INT,
   trial_days INT DEFAULT 0,
   features_json JSONB NOT NULL DEFAULT '{}',
   sort_order INT NOT NULL DEFAULT 0,
@@ -59,7 +63,6 @@ CREATE TABLE tenants (
   subscription_ends_at TIMESTAMPTZ,
   chargily_customer_id TEXT,
   onboarding_complete BOOLEAN NOT NULL DEFAULT false,
-  dashboard_tutorial_complete BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -110,14 +113,11 @@ CREATE INDEX idx_payment_receipts_status ON payment_receipts(status);
 
 CREATE TABLE platform_settings (
   id TEXT PRIMARY KEY DEFAULT 'default',
-  bank_details TEXT NOT NULL DEFAULT 'Virement CCP / CIB — contactez support@mycarta.dz pour les coordonnées bancaires.',
-  support_email TEXT DEFAULT 'support@mycarta.dz',
-  maintenance_enabled BOOLEAN NOT NULL DEFAULT false,
-  maintenance_banner TEXT DEFAULT '',
+  bank_details TEXT NOT NULL DEFAULT 'Virement CCP / CIB â€” contactez support@mycarta.dz pour les coordonnÃ©es bancaires.',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-INSERT INTO platform_settings (id, bank_details) VALUES ('default', 'Virement CCP / CIB — contactez support@mycarta.dz pour les coordonnées bancaires.');
+INSERT INTO platform_settings (id, bank_details) VALUES ('default', 'Virement CCP / CIB â€” contactez support@mycarta.dz pour les coordonnÃ©es bancaires.');
 
 -- =============================================================================
 -- SHOP SETTINGS (one row per tenant)
@@ -138,7 +138,6 @@ CREATE TABLE shop_settings (
   reward_value TEXT DEFAULT '',
   stamp_milestones JSONB NOT NULL DEFAULT '[]',
   client_language TEXT NOT NULL DEFAULT 'fr' CHECK (client_language IN ('fr', 'en')),
-  card_design_id TEXT NOT NULL DEFAULT 'classic',
   track_products BOOLEAN NOT NULL DEFAULT true,
   whatsapp_token TEXT,
   whatsapp_phone_id TEXT,
@@ -386,37 +385,9 @@ RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
   SELECT is_tenant_worker();
 $$;
 
-CREATE OR REPLACE FUNCTION public.products_set_tenant_id()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NEW.tenant_id IS NULL THEN
-    NEW.tenant_id := get_my_tenant_id();
-  END IF;
-
-  IF NEW.tenant_id IS NULL THEN
-    RAISE EXCEPTION 'tenant_id is required';
-  END IF;
-
-  IF NOT is_super_admin() AND NEW.tenant_id IS DISTINCT FROM get_my_tenant_id() THEN
-    RAISE EXCEPTION 'Cannot create product for another tenant';
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER products_set_tenant
-  BEFORE INSERT ON products
-  FOR EACH ROW
-  EXECUTE FUNCTION products_set_tenant_id();
-
 CREATE OR REPLACE FUNCTION public.is_owner_setup_complete()
 RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT EXISTS (SELECT 1 FROM profiles WHERE role = 'owner');
+  SELECT EXISTS (SELECT 1 FROM tenants LIMIT 1);
 $$;
 
 -- =============================================================================
@@ -429,7 +400,6 @@ RETURNS TABLE (
   worker_limit INT,
   campaign_limit INT,
   scans_per_day_limit INT,
-  location_limit INT,
   features_json JSONB,
   subscription_status TEXT,
   trial_ends_at TIMESTAMPTZ,
@@ -864,18 +834,27 @@ CREATE POLICY receipts_storage_select ON storage.objects FOR SELECT USING (
 );
 
 
--- INCREMENTAL MIGRATIONS
+-- -----------------------------------------------------------------------------
+-- FILE: migrations/002_onboarding_tutorial.sql
+-- -----------------------------------------------------------------------------
 
--- Fraud review index (from 002_fraud_review.sql)
-CREATE INDEX IF NOT EXISTS idx_scan_logs_fraud ON scan_logs(status, reviewed_at)
-  WHERE status IN ('blocked_fraud', 'blocked_limit');
+-- Add dashboard tutorial completion flag for owner first-visit tour
+ALTER TABLE tenants
+  ADD COLUMN IF NOT EXISTS dashboard_tutorial_complete BOOLEAN NOT NULL DEFAULT false;
 
--- from supabase/migrations/003_shop_settings_realtime.sql
+
+-- -----------------------------------------------------------------------------
+-- FILE: migrations/003_shop_settings_realtime.sql
+-- -----------------------------------------------------------------------------
+
 -- Enable realtime sync for shop_settings (dashboard â†” DB)
 ALTER PUBLICATION supabase_realtime ADD TABLE shop_settings;
 
 
--- from supabase/migrations/005_client_password.sql
+-- -----------------------------------------------------------------------------
+-- FILE: migrations/005_client_password.sql
+-- -----------------------------------------------------------------------------
+
 -- Client phone + password auth (signup / login on /client)
 -- Safe to re-run: dedupes phones, then adds column + unique index.
 
@@ -908,7 +887,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_phone_unique
   WHERE phone IS NOT NULL AND phone <> '';
 
 
--- from supabase/migrations/002_platform_admin.sql
+-- -----------------------------------------------------------------------------
+-- FILE: migrations/002_platform_admin.sql
+-- -----------------------------------------------------------------------------
+
 -- Platform admin RPCs (run after 001_saas_complete.sql)
 -- Powers the SaaS owner console at /platform
 
@@ -1091,7 +1073,10 @@ GRANT EXECUTE ON FUNCTION public.get_platform_tenants() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_platform_tenant_detail(UUID) TO authenticated;
 
 
--- from supabase/migrations/004_platform_analytics_complete.sql
+-- -----------------------------------------------------------------------------
+-- FILE: migrations/004_platform_analytics_complete.sql
+-- -----------------------------------------------------------------------------
+
 -- Platform admin â€” extended KPIs & analytics (run after 002_platform_admin.sql)
 -- Powers richer /platform console: revenue, cards, workers, fraud, cohorts
 
@@ -1645,7 +1630,10 @@ GRANT EXECUTE ON FUNCTION public.get_platform_tenant_detail(UUID) TO authenticat
 GRANT EXECUTE ON FUNCTION public.get_platform_analytics() TO authenticated;
 
 
--- from supabase/migrations/005_platform_admin_complete.sql
+-- -----------------------------------------------------------------------------
+-- FILE: migrations/005_platform_admin_complete.sql
+-- -----------------------------------------------------------------------------
+
 -- Platform admin complete â€” audit log, alerts, extended settings (run after 004)
 
 -- ---------------------------------------------------------------------------
@@ -1988,7 +1976,10 @@ GRANT EXECUTE ON FUNCTION public.get_platform_audit_log(INT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.log_platform_action(TEXT, UUID, JSONB) TO authenticated;
 
 
--- from supabase/migrations/006_platform_overview_fix.sql
+-- -----------------------------------------------------------------------------
+-- FILE: migrations/006_platform_overview_fix.sql
+-- -----------------------------------------------------------------------------
+
 -- Fix get_platform_overview: jsonb_build_object is limited to 100 arguments (50 pairs).
 -- The overview payload has 59 pairs â€” split into two objects merged with ||.
 
@@ -2148,7 +2139,10 @@ END;
 $$;
 
 
--- from supabase/migrations/013_card_design_rpc_fix.sql
+-- -----------------------------------------------------------------------------
+-- FILE: migrations/013_card_design_rpc_fix.sql
+-- -----------------------------------------------------------------------------
+
 -- Fix get_client_card_by_token: tenant-scoped signature (matches app) + cardDesignId.
 
 ALTER TABLE shop_settings
@@ -2264,7 +2258,10 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_client_card_by_token(TEXT, UUID) TO anon, authenticated;
 
 
--- from supabase/migrations/014_official_pricing_plans.sql
+-- -----------------------------------------------------------------------------
+-- FILE: migrations/014_official_pricing_plans.sql
+-- -----------------------------------------------------------------------------
+
 -- LoyalQR official pricing grid â€” June 2026 (DZD)
 
 ALTER TABLE plans ADD COLUMN IF NOT EXISTS location_limit INT;
@@ -2456,7 +2453,10 @@ END;
 $$;
 
 
--- from supabase/migrations/015_tenant_activities.sql
+-- -----------------------------------------------------------------------------
+-- FILE: migrations/015_tenant_activities.sql
+-- -----------------------------------------------------------------------------
+
 -- Tenant activity feed for owner settings (aggregates existing data + explicit logs)
 
 CREATE TABLE tenant_activity_logs (
@@ -2710,10 +2710,42 @@ $$;
 GRANT EXECUTE ON FUNCTION public.list_tenant_activities(INT, INT) TO authenticated;
 
 
-GRANT EXECUTE ON FUNCTION public.get_client_card_by_token(TEXT, UUID) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_client_rewards_by_token(TEXT, UUID) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_reward_claim_by_id(UUID) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_reward_claim_by_token(TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.is_owner_setup_complete() TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_tenant_by_slug(TEXT) TO anon, authenticated;
+-- -----------------------------------------------------------------------------
+-- FILE: migrations/016_products_tenant.sql
+-- -----------------------------------------------------------------------------
 
+-- Per-tenant product catalog: auto-set tenant_id on insert and block cross-tenant writes.
+
+CREATE OR REPLACE FUNCTION public.products_set_tenant_id()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.tenant_id IS NULL THEN
+    NEW.tenant_id := get_my_tenant_id();
+  END IF;
+
+  IF NEW.tenant_id IS NULL THEN
+    RAISE EXCEPTION 'tenant_id is required';
+  END IF;
+
+  IF NOT is_super_admin() AND NEW.tenant_id IS DISTINCT FROM get_my_tenant_id() THEN
+    RAISE EXCEPTION 'Cannot create product for another tenant';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS products_set_tenant ON products;
+CREATE TRIGGER products_set_tenant
+  BEFORE INSERT ON products
+  FOR EACH ROW
+  EXECUTE FUNCTION products_set_tenant_id();
+
+
+-- =============================================================================
+-- END — mycarta full schema
+-- =============================================================================

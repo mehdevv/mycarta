@@ -133,16 +133,22 @@ function BillingToggle({
   );
 }
 
+function BillingSectionDivider() {
+  return <hr className="dash-section-divider" aria-hidden="true" />;
+}
+
 function BillingSkeleton() {
   return (
     <div className="space-y-6">
       <div className="dash-skeleton h-20 w-72" />
+      <BillingSectionDivider />
       <div className="dash-stat-grid dash-stat-grid--billing">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="dash-skeleton h-28 rounded-2xl" />
         ))}
       </div>
       <div className="dash-skeleton h-24 rounded-2xl" />
+      <BillingSectionDivider />
       <div className="dash-plan-grid dash-plan-grid--3">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="dash-skeleton h-80 rounded-2xl" />
@@ -260,12 +266,19 @@ export default function BillingPage() {
   if (trialLoading) return <BillingSkeleton />;
 
   return (
-    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-8">
-      <DashboardPageHeader
-        eyebrow="Abonnement"
-        title="Facturation"
-        description="Plans, paiements et historique de votre abonnement."
-      />
+    <motion.div
+      variants={staggerContainer}
+      initial="initial"
+      animate="animate"
+      className="dash-billing-page"
+    >
+      <div className="dash-billing-page-head">
+        <DashboardPageHeader
+          title="Facturation"
+          description="Plans, paiements et historique de votre abonnement."
+        />
+        <BillingSectionDivider />
+      </div>
 
       <div className="dash-stat-grid dash-stat-grid--billing">
         <DashboardStatCard
@@ -372,6 +385,8 @@ export default function BillingPage() {
           loading={trialLoading || usageLoading}
         />
       </motion.div>
+
+      <BillingSectionDivider />
 
       <motion.section id="choose-plan" variants={staggerItem}>
         <div className="dash-section-head">

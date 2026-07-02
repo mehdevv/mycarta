@@ -8,6 +8,8 @@ import {
   type CardTemplate,
 } from "@/lib/card-templates";
 import type { StampMilestone } from "@/lib/stamp-milestones";
+import type { RewardMode } from "@/lib/spend-rewards";
+import { formatDzd } from "@/lib/pricing";
 
 type CardTemplateBodyProps = {
   cardDesignId?: string | null;
@@ -16,12 +18,20 @@ type CardTemplateBodyProps = {
   cardBg: string | null;
   qrValue: string;
   qrSize?: number;
+  rewardMode?: RewardMode;
+  stampsEnabled?: boolean;
+  spendEnabled?: boolean;
   stampThreshold: number;
   currentStamps: number;
+  spendThresholdDzd?: number;
+  currentCycleSpendDzd?: number;
   milestones: StampMilestone[];
   progress: number;
+  spendProgress?: number;
   hint?: string | null;
+  spendHint?: string | null;
   progressLabel?: string;
+  spendProgressLabel?: string;
   footerHint?: string;
   compact?: boolean;
   animated?: boolean;
@@ -142,19 +152,30 @@ export default function CardTemplateBody({
   cardBg,
   qrValue,
   qrSize,
+  rewardMode = "stamps",
+  stampsEnabled,
+  spendEnabled,
   stampThreshold,
   currentStamps,
+  spendThresholdDzd = 10000,
+  currentCycleSpendDzd = 0,
   milestones,
   progress,
+  spendProgress,
   hint,
+  spendHint,
   progressLabel = "Progression",
+  spendProgressLabel = "Dépenses",
   footerHint,
   compact = false,
   animated = false,
 }: CardTemplateBodyProps) {
+  const showStamps = stampsEnabled ?? (rewardMode === "stamps" || rewardMode === "both");
+  const showSpend = spendEnabled ?? (rewardMode === "spend" || rewardMode === "both");
   const template = getCardTemplate(cardDesignId);
   const size = qrSize ?? (compact ? 148 : 188);
   const tplClass = cardTemplateClassName(template);
+  const spendBarProgress = spendProgress ?? progress;
 
   const bgStyle = cardBg
     ? { backgroundImage: `url(${cardBg})`, opacity: 0.75 }
@@ -163,12 +184,12 @@ export default function CardTemplateBody({
         opacity: 1,
       };
 
-  const progressBlock = (
+  const stampProgressBlock = showStamps && !showSpend ? (
     <>
       <div className="card-tpl-progress-head">
         <span className="card-tpl-progress-label">{progressLabel}</span>
         <span className="card-tpl-progress-count" style={{ color: primaryColor }}>
-          {currentStamps}/{stampThreshold}
+          {`${currentStamps}/${stampThreshold}`}
         </span>
       </div>
       <ProgressBar
@@ -179,9 +200,27 @@ export default function CardTemplateBody({
         animated={animated}
       />
     </>
-  );
+  ) : null;
 
-  const stampsBlock = (
+  const spendProgressBlock = showSpend ? (
+    <>
+      <div className="card-tpl-progress-head">
+        <span className="card-tpl-progress-label">{spendProgressLabel}</span>
+        <span className="card-tpl-progress-count" style={{ color: primaryColor }}>
+          {`${formatDzd(currentCycleSpendDzd)} / ${formatDzd(spendThresholdDzd)}`}
+        </span>
+      </div>
+      <ProgressBar
+        progress={spendBarProgress}
+        primaryColor={primaryColor}
+        secondaryColor={secondaryColor}
+        template={template}
+        animated={animated}
+      />
+    </>
+  ) : null;
+
+  const stampsBlock = showStamps ? (
     <ClientStampGrid
       stampThreshold={stampThreshold}
       currentStamps={currentStamps}
@@ -190,7 +229,7 @@ export default function CardTemplateBody({
       compact={compact}
       template={template}
     />
-  );
+  ) : null;
 
   const hintBlock =
     hint &&
@@ -207,9 +246,34 @@ export default function CardTemplateBody({
       <p className="card-tpl-hint">{hint}</p>
     ));
 
+  const spendHintBlock =
+    spendHint &&
+    (animated ? (
+      <motion.p
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.55, duration: 0.35 }}
+        className="card-tpl-hint"
+      >
+        {spendHint}
+      </motion.p>
+    ) : (
+      <p className="card-tpl-hint">{spendHint}</p>
+    ));
+
   const footerBlock = footerHint && <p className="card-tpl-footer">{footerHint}</p>;
 
   const isSplit = template.layout === "split";
+  const ribbonLabel = showStamps && showSpend
+    ? `${progressLabel} · ${spendProgressLabel}`
+    : showSpend
+      ? spendProgressLabel
+      : progressLabel;
+  const ribbonCount = showStamps && showSpend
+    ? `${currentStamps}/${stampThreshold} · ${formatDzd(currentCycleSpendDzd)}`
+    : showSpend
+      ? `${formatDzd(currentCycleSpendDzd)} / ${formatDzd(spendThresholdDzd)}`
+      : `${currentStamps}/${stampThreshold}`;
 
   return (
     <div className={`card-tpl-surface card-tpl ${tplClass}`}>
@@ -218,10 +282,8 @@ export default function CardTemplateBody({
 
       {template.layout === "ribbon" && (
         <div className="card-tpl-ribbon relative" style={{ backgroundColor: primaryColor }}>
-          <span>{progressLabel}</span>
-          <strong>
-            {currentStamps}/{stampThreshold}
-          </strong>
+          <span>{ribbonLabel}</span>
+          <strong>{ribbonCount}</strong>
         </div>
       )}
 
@@ -230,7 +292,7 @@ export default function CardTemplateBody({
           className="card-tpl-top-banner relative"
           style={{ background: `linear-gradient(90deg, ${primaryColor}, ${secondaryColor})` }}
         >
-          <span>{progressLabel}</span>
+          <span>{ribbonLabel}</span>
         </div>
       )}
 
@@ -240,8 +302,14 @@ export default function CardTemplateBody({
         </div>
 
         <DetailsPanel template={template} primaryColor={primaryColor}>
-          {template.layout !== "ribbon" && progressBlock}
+          {template.layout !== "ribbon" && (
+            <>
+              {stampProgressBlock}
+              {spendProgressBlock}
+            </>
+          )}
           {hintBlock}
+          {spendHintBlock}
           {stampsBlock}
           {footerBlock}
         </DetailsPanel>

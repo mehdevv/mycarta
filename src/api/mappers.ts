@@ -9,6 +9,7 @@ function toCamel<T extends Record<string, unknown>>(row: T): Record<string, unkn
 
 import { parseStampMilestones } from "@/lib/stamp-milestones";
 import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
+import { resolveLoyaltyFlags } from "@/lib/loyalty-program";
 
 export function mapSettings(row: Record<string, unknown>) {
   const r = toCamel(row);
@@ -26,12 +27,22 @@ export function mapSettings(row: Record<string, unknown>) {
     secondaryColor: r.secondaryColor as string,
     currency: r.currency as string,
     timezone: r.timezone as string,
+    ...(() => {
+      const flags = resolveLoyaltyFlags({
+        stampsEnabled: r.stampsEnabled as boolean | undefined,
+        spendEnabled: r.spendEnabled as boolean | undefined,
+        rewardMode: r.rewardMode as string | undefined,
+      });
+      return { stampsEnabled: flags.stampsEnabled, spendEnabled: flags.spendEnabled };
+    })(),
     stampThreshold: r.stampThreshold as number,
+    spendThresholdDzd: Number(r.spendThresholdDzd ?? 10000),
     maxScansPerDay: r.maxScansPerDay as number,
     rewardType: r.rewardType as string,
     rewardValue: (r.rewardValue as string) ?? null,
     stampMilestones: parseStampMilestones(r.stampMilestones),
     trackProducts: r.trackProducts as boolean,
+    collectClientEmail: r.collectClientEmail === true,
     whatsappToken: r.whatsappToken as string | null,
     whatsappPhoneId: r.whatsappPhoneId as string | null,
     emailSender: r.emailSender as string | null,
@@ -52,6 +63,8 @@ export function mapClient(row: Record<string, unknown>) {
     cardCode: (r.cardCode ?? r.fidelityQrToken) as string,
     totalStamps: r.totalStamps as number,
     currentCycleStamps: r.currentCycleStamps as number,
+    currentCycleSpendDzd: Number(r.currentCycleSpendDzd ?? 0),
+    totalSpendDzd: Number(r.totalSpendDzd ?? 0),
     totalRewardsEarned: r.totalRewardsEarned as number,
     enrolledAt: r.enrolledAt as string,
     lastScanAt: (r.lastScanAt as string) ?? null,
@@ -104,8 +117,28 @@ export function mapClientCard(raw: Record<string, unknown>) {
       r.cardDesignId != null && String(r.cardDesignId).trim() !== ""
         ? String(r.cardDesignId)
         : undefined,
+    ...(() => {
+      const flags = resolveLoyaltyFlags({
+        stampsEnabled: r.stampsEnabled as boolean | undefined,
+        spendEnabled: r.spendEnabled as boolean | undefined,
+        rewardMode: r.rewardMode as string | undefined,
+      });
+      return {
+        stampsEnabled: flags.stampsEnabled,
+        spendEnabled: flags.spendEnabled,
+        rewardMode:
+          flags.stampsEnabled && flags.spendEnabled
+            ? "both"
+            : flags.spendEnabled
+              ? "spend"
+              : "stamps",
+      } as const;
+    })(),
     stampThreshold: Number(r.stampThreshold ?? 9),
     currentCycleStamps: Number(r.currentCycleStamps ?? 0),
+    spendThresholdDzd: Number(r.spendThresholdDzd ?? 10000),
+    currentCycleSpendDzd: Number(r.currentCycleSpendDzd ?? 0),
+    rewardValue: (r.rewardValue as string | null) ?? null,
     cardCode: String(r.cardCode ?? ""),
     stampMilestones: parseStampMilestones(r.stampMilestones),
     pendingRewardId: pendingId,

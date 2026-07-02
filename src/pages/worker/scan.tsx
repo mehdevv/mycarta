@@ -16,11 +16,19 @@ type ScanResult = {
   approved: boolean;
   reason: string | null;
   stampsAdded: number;
+  spendAddedDzd: number;
   currentStamps: number;
+  currentCycleSpendDzd: number;
   stampThreshold: number;
+  spendThresholdDzd: number;
+  rewardMode: "stamps" | "spend" | "both";
+  stampsEnabled: boolean;
+  spendEnabled: boolean;
+  currency: string;
   rewardTriggered: boolean;
   rewardDescription?: string | null;
   needsProducts: boolean;
+  needsAmount: boolean;
   products?: { id: string; name: string; price: number; category: string }[];
   pendingScanId?: string | null;
   clientName?: string | null;
@@ -36,16 +44,40 @@ type RedeemResult = {
   rewardDescription: string;
 };
 
+function resolveRewardMode(raw: Record<string, unknown>): ScanResult["rewardMode"] {
+  if (raw.rewardMode === "both" || raw.reward_mode === "both") return "both";
+  if (raw.rewardMode === "spend" || raw.reward_mode === "spend") return "spend";
+  if (raw.stampsEnabled === true && raw.spendEnabled === true) return "both";
+  if (raw.spendEnabled === true || raw.spend_enabled === true) return "spend";
+  return "stamps";
+}
+
 function normalizeScanResult(raw: Record<string, unknown>): ScanResult {
+  const rewardMode = resolveRewardMode(raw);
+  const stampsEnabled = raw.stampsEnabled !== undefined
+    ? raw.stampsEnabled !== false
+    : rewardMode === "stamps" || rewardMode === "both";
+  const spendEnabled = raw.spendEnabled !== undefined
+    ? raw.spendEnabled === true
+    : rewardMode === "spend" || rewardMode === "both";
+
   return {
     approved: Boolean(raw.approved),
     reason: (raw.reason as string | null) ?? null,
     stampsAdded: Number(raw.stampsAdded ?? raw.stamps_added ?? 0),
+    spendAddedDzd: Number(raw.spendAddedDzd ?? raw.spend_added_dzd ?? 0),
     currentStamps: Number(raw.currentStamps ?? raw.current_stamps ?? 0),
+    currentCycleSpendDzd: Number(raw.currentCycleSpendDzd ?? raw.current_cycle_spend_dzd ?? 0),
     stampThreshold: Number(raw.stampThreshold ?? raw.stamp_threshold ?? 9),
+    spendThresholdDzd: Number(raw.spendThresholdDzd ?? raw.spend_threshold_dzd ?? 10000),
+    rewardMode,
+    stampsEnabled,
+    spendEnabled,
+    currency: String(raw.currency ?? "DZD"),
     rewardTriggered: Boolean(raw.rewardTriggered ?? raw.reward_triggered),
     rewardDescription: (raw.rewardDescription ?? raw.reward_description) as string | null | undefined,
     needsProducts: Boolean(raw.needsProducts ?? raw.needs_products),
+    needsAmount: Boolean(raw.needsAmount ?? raw.needs_amount),
     products: Array.isArray(raw.products)
       ? (raw.products as ScanResult["products"])
       : [],
@@ -66,10 +98,11 @@ export default function WorkerScan() {
   const purchaseScan = usePurchaseScan();
   const confirmScan = useConfirmPurchaseScan();
   const redeemRewardScan = useRedeemRewardScan();
-  const [step, setStep] = useState<"scan" | "products" | "result" | "redeem-result">("scan");
+  const [step, setStep] = useState<"scan" | "products" | "amount" | "result" | "redeem-result">("scan");
   const [result, setResult] = useState<ScanResult | null>(null);
   const [redeemResult, setRedeemResult] = useState<RedeemResult | null>(null);
   const [productQtys, setProductQtys] = useState<ProductQty>({});
+  const [amountDzd, setAmountDzd] = useState("");
   const [cameraStarting, setCameraStarting] = useState(false);
   const html5QrcodeRef = useRef<InstanceType<typeof import("html5-qrcode").Html5Qrcode> | null>(null);
   const processingRef = useRef(false);
@@ -107,6 +140,7 @@ export default function WorkerScan() {
     setResult(null);
     setRedeemResult(null);
     setProductQtys({});
+    setAmountDzd("");
     setCameraStarting(false);
   }, [stopScanner]);
 
@@ -182,6 +216,9 @@ export default function WorkerScan() {
               if (r.needsProducts && r.pendingScanId) {
                 setProductQtys({});
                 setStep("products");
+              } else if (r.needsAmount && r.pendingScanId) {
+                setAmountDzd("");
+                setStep("amount");
               } else {
                 setStep("result");
               }
@@ -222,6 +259,32 @@ export default function WorkerScan() {
     };
   }, [step, stopScanner]);
 
+  const handleConfirmAmount = async () => {
+    if (!result?.pendingScanId) return;
+    const parsed = Math.floor(Number(amountDzd.replace(/\s/g, "")));
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      toast({ title: "Montant invalide", description: "Saisissez un montant supérieur à 0.", variant: "destructive" });
+      return;
+    }
+    try {
+      const confirmed = await confirmScan.mutateAsync({
+        data: { pendingScanId: result.pendingScanId, amountDzd: parsed },
+      });
+      const merged = { ...result, ...normalizeScanResult(confirmed as Record<string, unknown>) };
+      setResult(merged);
+      if (merged.needsAmount && merged.pendingScanId) {
+        setAmountDzd("");
+        setStep("amount");
+      } else {
+        setStep("result");
+      }
+      vibrate(50);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Confirm failed";
+      toast({ title: "Échec", description: message, variant: "destructive" });
+    }
+  };
+
   const handleConfirmProducts = async () => {
     if (!result?.pendingScanId) return;
     const products = Object.entries(productQtys)
@@ -233,7 +296,12 @@ export default function WorkerScan() {
       });
       const merged = { ...result, ...normalizeScanResult(confirmed as Record<string, unknown>) };
       setResult(merged);
-      setStep("result");
+      if (merged.needsAmount && merged.pendingScanId) {
+        setAmountDzd("");
+        setStep("amount");
+      } else {
+        setStep("result");
+      }
       vibrate(50);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Confirm failed";
@@ -274,6 +342,56 @@ export default function WorkerScan() {
             Point the camera at a loyalty card or reward QR code
           </p>
           <ScanLine className="h-5 w-5 text-primary animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "amount" && result) {
+    return (
+      <div className="flex flex-col h-full p-4 pb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Button variant="ghost" size="icon" onClick={() => void handleReset()} aria-label="Cancel">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h2 className="text-xl font-bold">Montant dépensé</h2>
+        </div>
+        <p className="text-muted-foreground text-sm mb-2">
+          Client : <span className="font-medium text-foreground">{result.clientName ?? "Inconnu"}</span>
+        </p>
+        <p className="text-sm text-muted-foreground mb-6">
+          Progression actuelle :{" "}
+          <span className="font-semibold text-foreground">
+            {result.currentCycleSpendDzd.toLocaleString("fr-DZ")} / {result.spendThresholdDzd.toLocaleString("fr-DZ")} {result.currency}
+          </span>
+        </p>
+
+        <Card className="mb-4">
+          <CardContent className="p-4 space-y-3">
+            <label className="text-sm font-medium" htmlFor="purchase-amount">
+              Montant de cet achat ({result.currency})
+            </label>
+            <input
+              id="purchase-amount"
+              type="number"
+              min={1}
+              step={50}
+              inputMode="numeric"
+              placeholder="Ex. 2500"
+              value={amountDzd}
+              onChange={(e) => setAmountDzd(e.target.value)}
+              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-lg font-semibold"
+            />
+          </CardContent>
+        </Card>
+
+        <div className="pt-4 space-y-2 mt-auto shrink-0">
+          <Button className="w-full h-12" onClick={() => void handleConfirmAmount()} disabled={confirmScan.isPending}>
+            {confirmScan.isPending ? "Enregistrement…" : "Valider l'achat"}
+          </Button>
+          <Button variant="ghost" className="w-full" onClick={() => void handleReset()}>
+            Annuler
+          </Button>
         </div>
       </div>
     );
@@ -379,9 +497,19 @@ export default function WorkerScan() {
               <CheckCircle className="h-20 w-20 mb-4" />
               <p className="text-3xl font-bold mb-2">Approved</p>
               <p className="text-xl">{result.clientName}</p>
-              <p className="mt-4 text-lg font-semibold">
-                {result.currentStamps} / {result.stampThreshold} stamps
-              </p>
+              {result.spendEnabled ? (
+                <p className="mt-4 text-lg font-semibold">
+                  +{result.spendAddedDzd.toLocaleString("fr-DZ")} {result.currency}
+                  <span className="block text-base font-medium mt-1 opacity-90">
+                    {result.currentCycleSpendDzd.toLocaleString("fr-DZ")} / {result.spendThresholdDzd.toLocaleString("fr-DZ")} {result.currency}
+                  </span>
+                </p>
+              ) : null}
+              {result.stampsEnabled ? (
+                <p className={`text-lg font-semibold${result.spendEnabled ? " mt-2" : " mt-4"}`}>
+                  {result.currentStamps} / {result.stampThreshold} stamps
+                </p>
+              ) : null}
             </>
           ) : isDailyLimit ? (
             <>

@@ -66,6 +66,8 @@ export const messages: Messages = {
       trustNoCard: "بدون بطاقة بنكية",
       trustReady: "جاهز في 10 دقائق",
       imageAlt: "عميل يمسح رمز QR للولاء عند كاونتر المقهى",
+      imageAltPay: "عميل يمسح رمز QR للدفع عند كاونتر المقهى",
+      imageLoaderAria: "تقدم صور القسم الرئيسي",
     },
     tutorials: {
       eyebrow: "دروس فيديو",

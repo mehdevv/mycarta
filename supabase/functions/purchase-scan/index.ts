@@ -99,21 +99,97 @@ function resolveStampReward(
   return { rewardTriggered: false, rewardDescription: null, finalCycleStamps: newCycleStamps };
 }
 
+function resolveSpendReward(
+  newCycleSpendDzd: number,
+  spendThresholdDzd: number,
+  fallbackReward: string,
+) {
+  if (spendThresholdDzd <= 0) {
+    return { rewardTriggered: false, rewardDescription: null, finalCycleSpendDzd: newCycleSpendDzd };
+  }
+  if (newCycleSpendDzd >= spendThresholdDzd) {
+    return {
+      rewardTriggered: true,
+      rewardDescription: fallbackReward || "Loyalty reward",
+      finalCycleSpendDzd: 0,
+    };
+  }
+  return { rewardTriggered: false, rewardDescription: null, finalCycleSpendDzd: newCycleSpendDzd };
+}
+
+function resolveProgramFlags(settings: Record<string, unknown> | null) {
+  if (!settings) return { stampsEnabled: true, spendEnabled: false };
+  if (settings.stamps_enabled !== undefined || settings.spend_enabled !== undefined) {
+    return {
+      stampsEnabled: settings.stamps_enabled !== false,
+      spendEnabled: settings.spend_enabled === true,
+    };
+  }
+  const mode = String(settings.reward_mode ?? "stamps");
+  return {
+    stampsEnabled: mode === "stamps" || mode === "both",
+    spendEnabled: mode === "spend" || mode === "both",
+  };
+}
+
+function programModeLabel(flags: { stampsEnabled: boolean; spendEnabled: boolean }) {
+  if (flags.stampsEnabled && flags.spendEnabled) return "both";
+  if (flags.spendEnabled) return "spend";
+  return "stamps";
+}
+
+function scanResponseExtras(
+  settings: Record<string, unknown> | null,
+  client: Record<string, unknown>,
+  flags: { stampsEnabled: boolean; spendEnabled: boolean },
+) {
+  return {
+    stampsEnabled: flags.stampsEnabled,
+    spendEnabled: flags.spendEnabled,
+    rewardMode: programModeLabel(flags),
+    currency: settings?.currency ?? "DZD",
+    currentStamps: client.current_cycle_stamps,
+    currentCycleSpendDzd: client.current_cycle_spend_dzd ?? 0,
+    stampThreshold: settings?.stamp_threshold ?? 9,
+    spendThresholdDzd: settings?.spend_threshold_dzd ?? 10000,
+  };
+}
+
 function blockedResponse(
   reason: string,
-  client: { id: string; full_name: string; current_cycle_stamps: number },
-  settings: { stamp_threshold?: number; max_scans_per_day?: number } | null,
+  client: {
+    id: string;
+    full_name: string;
+    current_cycle_stamps: number;
+    current_cycle_spend_dzd?: number;
+  },
+  settings: {
+    stamp_threshold?: number;
+    spend_threshold_dzd?: number;
+    max_scans_per_day?: number;
+    reward_mode?: string;
+    currency?: string;
+  } | null,
   clientName?: string,
 ) {
+  const flags = resolveProgramFlags(settings as Record<string, unknown> | null);
   return {
     approved: false,
     reason,
     stampsAdded: 0,
+    spendAddedDzd: 0,
     currentStamps: client.current_cycle_stamps,
+    currentCycleSpendDzd: client.current_cycle_spend_dzd ?? 0,
     stampThreshold: settings?.stamp_threshold ?? 9,
+    spendThresholdDzd: settings?.spend_threshold_dzd ?? 10000,
+    stampsEnabled: flags.stampsEnabled,
+    spendEnabled: flags.spendEnabled,
+    rewardMode: programModeLabel(flags),
+    currency: settings?.currency ?? "DZD",
     maxScansPerDay: settings?.max_scans_per_day ?? 2,
     rewardTriggered: false,
     needsProducts: false,
+    needsAmount: false,
     clientName: clientName ?? client.full_name,
   };
 }
@@ -239,7 +315,7 @@ Deno.serve(async (req) => {
       .select("*", { count: "exact", head: true })
       .eq("client_id", client.id)
       .eq("status", "approved")
-      .gt("stamps_added", 0)
+      .or("stamps_added.gt.0,spend_added_dzd.gt.0,purchase_amount_dzd.gt.0")
       .gte("scanned_at", todayStart.toISOString());
 
     if ((todayScans ?? 0) >= (settings?.max_scans_per_day ?? 2)) {
@@ -276,13 +352,31 @@ Deno.serve(async (req) => {
       return jsonResponse(blockedResponse("too_soon", client, settings));
     }
 
-    if (settings?.track_products) {
-      const { data: products } = await admin
-        .from("products")
-        .select("id, name, price, category")
-        .eq("tenant_id", tenantId)
-        .eq("is_active", true)
-        .order("name");
+    const flags = resolveProgramFlags(settings as Record<string, unknown> | null);
+    if (!flags.stampsEnabled && !flags.spendEnabled) {
+      return jsonResponse({ error: "Loyalty program not configured" }, 400);
+    }
+
+    const needsProducts = flags.stampsEnabled && Boolean(settings?.track_products);
+    const needsAmount = flags.spendEnabled;
+    const needsWorkerInput = needsProducts || needsAmount;
+
+    if (needsWorkerInput) {
+      let products: { id: string; name: string; price: number; category: string }[] = [];
+      if (needsProducts) {
+        const { data: productRows } = await admin
+          .from("products")
+          .select("id, name, price, category")
+          .eq("tenant_id", tenantId)
+          .eq("is_active", true)
+          .order("name");
+        products = (productRows ?? []).map((p) => ({
+          id: p.id,
+          name: p.name,
+          price: Number(p.price),
+          category: p.category ?? "",
+        }));
+      }
 
       const { data: pendingScan } = await admin
         .from("scan_logs")
@@ -293,7 +387,10 @@ Deno.serve(async (req) => {
           scan_type: "purchase",
           status: "approved",
           stamps_added: 0,
-          pending_products: true,
+          spend_added_dzd: 0,
+          pending_products: needsProducts,
+          pending_amount: needsAmount,
+          pending_stamps: flags.stampsEnabled,
         })
         .select("id")
         .single();
@@ -302,18 +399,14 @@ Deno.serve(async (req) => {
         approved: true,
         reason: null,
         stampsAdded: 0,
-        currentStamps: client.current_cycle_stamps,
-        stampThreshold: settings?.stamp_threshold ?? 9,
+        spendAddedDzd: 0,
         rewardTriggered: false,
-        needsProducts: true,
-        products: (products ?? []).map((p) => ({
-          id: p.id,
-          name: p.name,
-          price: Number(p.price),
-          category: p.category ?? "",
-        })),
+        needsProducts,
+        needsAmount,
+        products,
         pendingScanId: pendingScan?.id,
         clientName: client.full_name,
+        ...scanResponseExtras(settings as Record<string, unknown>, client, flags),
       });
     }
 
@@ -377,30 +470,42 @@ Deno.serve(async (req) => {
         .eq("scan_log_id", scan.id)
         .maybeSingle();
 
+      const flags = resolveProgramFlags(settings as Record<string, unknown> | null);
       return jsonResponse({
         approved: true,
         reason: null,
         stampsAdded: 1,
-        currentStamps: outcome.finalCycleStamps,
-        stampThreshold: threshold,
+        spendAddedDzd: 0,
         rewardTriggered: true,
         rewardDescription: outcome.rewardDescription,
         rewardId: rewardRow?.id ?? null,
         needsProducts: false,
+        needsAmount: false,
         clientName: client.full_name,
+        ...scanResponseExtras(
+          settings as Record<string, unknown>,
+          { ...client, current_cycle_stamps: outcome.finalCycleStamps },
+          flags,
+        ),
       });
     }
 
+    const flags = resolveProgramFlags(settings as Record<string, unknown> | null);
     return jsonResponse({
       approved: true,
       reason: null,
       stampsAdded: 1,
-      currentStamps: outcome.finalCycleStamps,
-      stampThreshold: threshold,
+      spendAddedDzd: 0,
       rewardTriggered: outcome.rewardTriggered,
       rewardDescription: outcome.rewardDescription,
       needsProducts: false,
+      needsAmount: false,
       clientName: client.full_name,
+      ...scanResponseExtras(
+        settings as Record<string, unknown>,
+        { ...client, current_cycle_stamps: outcome.finalCycleStamps },
+        flags,
+      ),
     });
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);

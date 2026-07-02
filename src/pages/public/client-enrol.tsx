@@ -12,15 +12,22 @@ import { tapScale } from "@/lib/motion";
 import ClientShell, { ClientCard, ClientLoading } from "@/components/client/client-shell";
 import BrandLogo from "@/components/brand/mascot";
 import { isCardCode, normalizeCardCode } from "@/lib/card-code";
-import { ArrowRight, Hash, Loader2, Smartphone, Sparkles } from "lucide-react";
+import { ArrowRight, Hash, Loader2, Mail, Smartphone, Sparkles } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { useClientI18n } from "@/hooks/use-client-i18n";
 import { resolveBusinessLogo } from "@/hooks/use-branding";
 import { useRoute } from "wouter";
-import { rememberClientTenantSlug, clientCardPath } from "@/lib/scoped-routes";
+import { clientCardPath, rememberClientTenantSlug } from "@/lib/scoped-routes";
+import ClientPortalClosed from "@/components/client/client-portal-closed";
 
 type ClientEnrolProps = {
   tenantSlug?: string;
+};
+
+type EnrolFormValues = {
+  fullName: string;
+  phone: string;
+  email?: string;
 };
 
 export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps = {}) {
@@ -33,19 +40,22 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
   const { data: tenantMeta, isLoading: tenantMetaLoading } = useGetTenantBySlug(tenantSlug || undefined);
   const enrolClient = useEnrolClient();
   const [lookupCode, setLookupCode] = useState("");
+  const collectEmail = settings?.collectClientEmail === true;
 
-  const createSchema = useMemo(
-    () =>
-      z.object({
-        fullName: z.string().min(2, t("nameMinLength")),
-        phone: z.string().min(8, t("phoneRequired")),
-      }),
-    [t],
-  );
+  const createSchema = useMemo(() => {
+    const base = z.object({
+      fullName: z.string().min(2, t("nameMinLength")),
+      phone: z.string().min(8, t("phoneRequired")),
+    });
+    if (!collectEmail) return base;
+    return base.extend({
+      email: z.string().trim().min(1, t("emailRequired")).email(t("emailInvalid")),
+    });
+  }, [t, collectEmail]);
 
-  const form = useForm<z.infer<typeof createSchema>>({
+  const form = useForm<EnrolFormValues>({
     resolver: zodResolver(createSchema),
-    defaultValues: { fullName: "", phone: "" },
+    defaultValues: { fullName: "", phone: "", email: "" },
   });
 
   useEffect(() => {
@@ -59,14 +69,15 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
     tenantMeta?.logoUrl as string | undefined,
   );
 
-  const onCreate = async (values: z.infer<typeof createSchema>) => {
+  const onCreate = async (values: EnrolFormValues) => {
     if (!tenantSlug) {
       toast({ title: t("couldNotCreate"), description: "Shop not found", variant: "destructive" });
       return;
     }
     try {
+      const email = collectEmail ? values.email?.trim() || undefined : undefined;
       const response = await enrolClient.mutateAsync({
-        data: { fullName: values.fullName, phone: values.phone, slug: tenantSlug },
+        data: { fullName: values.fullName, phone: values.phone, email, slug: tenantSlug },
       });
       if (response.existing) {
         toast({ title: t("welcomeBack"), description: t("openingExisting") });
@@ -111,6 +122,23 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
         logoUrl={businessLogo}
         businessName={settings?.businessName ?? (tenantMeta?.businessName as string) ?? (tenantMeta?.name as string)}
         primaryColor={settings?.primaryColor}
+      />
+    );
+  }
+
+  const shopName =
+    settings?.businessName ??
+    (tenantMeta?.businessName as string) ??
+    (tenantMeta?.name as string) ??
+    "";
+
+  if (tenantMeta?.isAccessAllowed === false) {
+    return (
+      <ClientPortalClosed
+        businessName={shopName}
+        logoUrl={businessLogo}
+        primaryColor={primary}
+        secondaryColor={secondary}
       />
     );
   }
@@ -182,6 +210,32 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
                     </FormItem>
                   )}
                 />
+                {collectEmail && (
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("email")}</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              type="email"
+                              inputMode="email"
+                              autoComplete="email"
+                              required
+                              placeholder={t("emailPlaceholder")}
+                              className="h-12 pl-10 rounded-xl text-base"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <motion.div {...tapScale()}>
                   <Button
                     type="submit"

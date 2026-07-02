@@ -64,6 +64,8 @@ export const messages = {
       trustNoCard: "Sans carte bancaire",
       trustReady: "Prêt en 10 min",
       imageAlt: "Client scannant un QR code fidélité au comptoir d'un café",
+      imageAltPay: "Client scannant un QR code pour payer au comptoir d'un café",
+      imageLoaderAria: "Progression des illustrations",
     },
     tutorials: {
       eyebrow: "Tutoriels vidéo",
@@ -225,7 +227,7 @@ export const messages = {
     },
     finalCta: {
       title: "Prêt à connaître vos clients ?",
-      description: "Configurez votre programme en 10 minutes. Essai 14 jours — 100 clients, 50 scans/jour.",
+      description: "Configurez votre programme en 10 minutes. Essai 14 jours — 10 clients, 25 scans.",
       cta: "Créer mon compte gratuit",
       perksAria: "Avantages de l'essai gratuit",
       perkNoCard: "Sans carte bancaire",

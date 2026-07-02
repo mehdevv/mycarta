@@ -20,7 +20,11 @@ const messages = {
     loyaltyCardTitle: "{business} Loyalty Card",
     rewardReady: "Reward ready!",
     progress: "Progress",
+    spendProgress: "Spending",
     showQrHint: "Show this QR at the counter to collect stamps",
+    spendQrHint: "Show this QR at the counter — your purchases count toward your reward",
+    spendRewardHint: "{remaining} more to unlock: {label}",
+    spendRewardUpcoming: "Spend goal",
     recentVisits: "Last hour",
     blocked: "Blocked",
     saveLinkProminent: "Save this link — you'll need it to open your card again",
@@ -46,6 +50,12 @@ const messages = {
     enterSixDigits: "Enter your 6-digit card number.",
     nameMinLength: "Name must be at least 2 characters.",
     phoneRequired: "Phone number is required.",
+    email: "Email",
+    emailPlaceholder: "you@example.com",
+    emailRequired: "Email is required.",
+    emailInvalid: "Enter a valid email address.",
+    contactOwnerTitle: "Contact the {shop} owner",
+    contactOwnerDesc: "The loyalty program is temporarily unavailable. Please reach out to the shop directly.",
     milestoneHint: "{remaining} more stamp(s) until: {label}",
     milestoneHintOne: "1 more stamp until: {label}",
     noRewardWaiting: "No reward waiting",
@@ -83,7 +93,11 @@ const messages = {
     loyaltyCardTitle: "Carte fidélité {business}",
     rewardReady: "Récompense prête !",
     progress: "Progression",
+    spendProgress: "Dépenses",
     showQrHint: "Montrez ce QR au comptoir pour collecter des tampons",
+    spendQrHint: "Montrez ce QR au comptoir — vos achats comptent pour la récompense",
+    spendRewardHint: "Encore {remaining} avant : {label}",
+    spendRewardUpcoming: "Objectif dépenses",
     recentVisits: "Dernière heure",
     blocked: "Bloqué",
     saveLinkProminent: "Enregistrez ce lien — vous en aurez besoin pour rouvrir votre carte",
@@ -109,6 +123,12 @@ const messages = {
     enterSixDigits: "Entrez votre numéro de carte à 6 chiffres.",
     nameMinLength: "Le nom doit contenir au moins 2 caractères.",
     phoneRequired: "Le numéro de téléphone est requis.",
+    email: "Email",
+    emailPlaceholder: "vous@exemple.com",
+    emailRequired: "L'email est requis.",
+    emailInvalid: "Adresse email invalide.",
+    contactOwnerTitle: "Contactez le propriétaire de {shop}",
+    contactOwnerDesc: "Le programme fidélité est momentanément indisponible. Merci de contacter le commerce directement.",
     milestoneHint: "Encore {remaining} tampon(s) avant : {label}",
     milestoneHintOne: "Encore 1 tampon avant : {label}",
     noRewardWaiting: "Aucune récompense en attente",
@@ -172,6 +192,12 @@ const messages = {
     enterSixDigits: "أدخل رقم بطاقتك المكوّن من 6 أرقام.",
     nameMinLength: "يجب أن يحتوي الاسم على حرفين على الأقل.",
     phoneRequired: "رقم الهاتف مطلوب.",
+    email: "البريد الإلكتروني",
+    emailPlaceholder: "vous@exemple.com",
+    emailRequired: "البريد الإلكتروني مطلوب.",
+    emailInvalid: "عنوان بريد إلكتروني غير صالح.",
+    contactOwnerTitle: "تواصل مع مالك {shop}",
+    contactOwnerDesc: "برنامج الولاء غير متاح مؤقتاً. يرجى التواصل مع المتجر مباشرة.",
     milestoneHint: "باقي {remaining} ختم(أختام) حتى: {label}",
     milestoneHintOne: "ختم واحد متبقٍ حتى: {label}",
     noRewardWaiting: "لا مكافأة في الانتظار",
@@ -245,4 +271,16 @@ export function nextMilestoneHintText(
     return t("milestoneHintOne", { label: upcoming.label });
   }
   return t("milestoneHint", { remaining, label: upcoming.label });
+}
+
+export function spendRewardHintText(
+  currentSpendDzd: number,
+  spendThresholdDzd: number,
+  rewardValue: string | null | undefined,
+  t: ReturnType<typeof clientT>,
+): string | null {
+  const remaining = Math.max(0, spendThresholdDzd - currentSpendDzd);
+  if (remaining <= 0 || !rewardValue?.trim()) return null;
+  const formatted = remaining.toLocaleString("fr-DZ");
+  return t("spendRewardHint", { remaining: `${formatted} DZD`, label: rewardValue.trim() });
 }

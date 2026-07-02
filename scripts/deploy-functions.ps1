@@ -11,7 +11,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$ProjectRef = "dunmzwligaqhrpoeagap"
+$ProjectRef = if ($env:SUPABASE_PROJECT_REF) { $env:SUPABASE_PROJECT_REF } else { "qealyijgeosyvmfpojzq" }
 $Root = Split-Path -Parent $PSScriptRoot
 
 Set-Location $Root

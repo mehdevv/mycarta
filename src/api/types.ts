@@ -21,12 +21,16 @@ export interface ShopSettings {
   secondaryColor: string;
   currency: string;
   timezone: string;
+  stampsEnabled: boolean;
+  spendEnabled: boolean;
   stampThreshold: number;
+  spendThresholdDzd: number;
   maxScansPerDay: number;
   rewardType: string;
   rewardValue: string | null;
   stampMilestones: { position: number; label: string }[];
   trackProducts: boolean;
+  collectClientEmail: boolean;
   whatsappToken?: string | null;
   whatsappPhoneId?: string | null;
   emailSender?: string | null;
@@ -44,6 +48,8 @@ export interface Client {
   cardCode: string;
   totalStamps: number;
   currentCycleStamps: number;
+  currentCycleSpendDzd: number;
+  totalSpendDzd: number;
   totalRewardsEarned: number;
   enrolledAt: string;
   lastScanAt: string | null;
@@ -96,8 +102,16 @@ export interface ClientCard {
   cardUrl: string | null;
   cardTemplateUrl: string | null;
   cardDesignId?: string | null;
+  stampsEnabled?: boolean;
+  spendEnabled?: boolean;
+  /** @deprecated */
+  rewardMode?: "stamps" | "spend" | "both";
+  currency?: string;
   stampThreshold: number;
   currentCycleStamps: number;
+  spendThresholdDzd?: number;
+  currentCycleSpendDzd?: number;
+  rewardValue?: string | null;
   cardCode: string;
   stampMilestones?: { position: number; label: string }[];
   pendingRewardId?: string | null;

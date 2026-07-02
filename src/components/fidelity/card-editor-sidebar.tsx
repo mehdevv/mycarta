@@ -12,12 +12,14 @@ import { extractBrandColorsFromImage } from "@/lib/extract-brand-colors";
 import { getBrandingLimits } from "@/lib/branding-limits";
 import { cardEditorToShopSettings } from "@/lib/card-editor-payload";
 import { PLATFORM } from "@/lib/platform";
+import { tenantClientLink } from "@/lib/links";
 import StampMilestonesEditor from "@/components/fidelity/stamp-milestones-editor";
 import AiCardDesigner from "@/components/fidelity/ai-card-designer";
 import CardTemplatePicker from "@/components/fidelity/card-template-picker";
 import type { StampMilestone } from "@/lib/stamp-milestones";
 import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
 import { clampMilestonesToThreshold } from "@/lib/stamp-milestones";
+import { formatDzd } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -35,16 +37,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Banknote,
+  Check,
   ChevronDown,
   ChevronRight,
+  Coins,
   Crown,
+  ExternalLink,
   Gift,
   ImageIcon,
+  Info,
   Loader2,
   Lock,
+  Mail,
   Palette,
   Pencil,
   Plus,
+  Settings2,
   SlidersHorizontal,
   Stamp,
   Upload,
@@ -60,21 +69,26 @@ export type CardEditorState = {
   cardDesignId: string;
   primaryColor: string;
   secondaryColor: string;
+  stampsEnabled: boolean;
+  spendEnabled: boolean;
   stampThreshold: number;
+  spendThresholdDzd: number;
   maxScansPerDay: number;
   rewardValue: string;
   stampMilestones: StampMilestone[];
   trackProducts: boolean;
+  collectClientEmail: boolean;
 };
 
-type EditorDialog = "appearance" | "program" | "rewards" | null;
+type EditorDialog = "appearance" | "program" | "rewards" | "enrollment" | null;
 
 type CardEditorSidebarProps = {
   state: CardEditorState;
   previewStamps: number;
-  dirty?: boolean;
+  previewSpendDzd: number;
   onChange: (next: CardEditorState) => void;
   onPreviewStampsChange: (value: number) => void;
+  onPreviewSpendDzdChange: (value: number) => void;
   onSaved?: (updatedAt: string) => void;
 };
 
@@ -90,9 +104,10 @@ function ColorSwatch({ color }: { color: string }) {
 export default function CardEditorSidebar({
   state,
   previewStamps,
-  dirty = false,
+  previewSpendDzd,
   onChange,
   onPreviewStampsChange,
+  onPreviewSpendDzdChange,
   onSaved,
 }: CardEditorSidebarProps) {
   const { data: settings } = useGetSettings();
@@ -110,12 +125,13 @@ export default function CardEditorSidebar({
   const planId = trialStatus?.planId ?? tenant?.planId ?? "trial";
   const limits = getBrandingLimits(planId);
   const milestoneCount = state.stampMilestones.filter((m) => m.label.trim()).length;
+  const clientPortalUrl = tenant?.slug ? tenantClientLink(tenant.slug) : null;
 
   const patch = (partial: Partial<CardEditorState>) => onChange({ ...state, ...partial });
 
   const persistToDb = async (
     nextState: CardEditorState = state,
-    options?: { message?: string; silent?: boolean },
+    options?: { message?: string; silent?: boolean; markClean?: boolean },
   ) => {
     if (!settings) return false;
 
@@ -125,7 +141,9 @@ export default function CardEditorSidebar({
         data: cardEditorToShopSettings(nextState, limits, settings.businessName),
         syncTenantBranding: true,
       });
-      onSaved?.(saved.updatedAt);
+      if (options?.markClean) {
+        onSaved?.(saved.updatedAt);
+      }
       if (!options?.silent) {
         toast({
           title: options?.message ?? "Enregistré",
@@ -140,20 +158,12 @@ export default function CardEditorSidebar({
   };
 
   const applyAndClose = async () => {
-    const ok = await persistToDb(state, { silent: true });
+    const ok = await persistToDb(state, { silent: true, markClean: true });
     if (ok) {
       toast({ title: "Section enregistrée", description: "Modifications synchronisées." });
       setOpenDialog(null);
     }
   };
-
-  useEffect(() => {
-    if (!dirty || updateSettings.isPending || !settings) return;
-    const timer = window.setTimeout(() => {
-      void persistToDb(state, { silent: true });
-    }, 1200);
-    return () => window.clearTimeout(timer);
-  }, [state, dirty, settings, updateSettings.isPending]);
 
   const handleLogoUpload = async (file: File) => {
     if (!tenant) return;
@@ -209,6 +219,14 @@ export default function CardEditorSidebar({
     }
   };
 
+  const programSummary = (() => {
+    const parts: string[] = [];
+    if (state.stampsEnabled) parts.push(`${state.stampThreshold} tampons`);
+    if (state.spendEnabled) parts.push(`${formatDzd(state.spendThresholdDzd)} dépensés`);
+    if (parts.length === 0) parts.push("Aucun mode actif");
+    return `${parts.join(" + ")} · ${state.maxScansPerDay} scan(s)/j`;
+  })();
+
   const summaryRows: {
     id: EditorDialog;
     icon: typeof Palette;
@@ -232,7 +250,7 @@ export default function CardEditorSidebar({
       id: "program",
       icon: Stamp,
       title: "Programme",
-      summary: `${state.stampThreshold} tampons · ${state.maxScansPerDay} scan(s)/j`,
+      summary: programSummary,
     },
     {
       id: "rewards",
@@ -245,6 +263,14 @@ export default function CardEditorSidebar({
             ? `Finale : ${state.rewardValue.trim()}`
             : "Aucun prix défini",
     },
+    {
+      id: "enrollment",
+      icon: Mail,
+      title: "Inscription client",
+      summary: state.collectClientEmail
+        ? "Nom, téléphone et email"
+        : "Nom et téléphone uniquement",
+    },
   ];
 
   return (
@@ -255,7 +281,20 @@ export default function CardEditorSidebar({
             <div className="min-w-0">
               <h2 className="dash-card-editor-sidebar-title">Réglages</h2>
             </div>
-            <DropdownMenu>
+            <div className="flex items-center gap-2 shrink-0">
+              {clientPortalUrl && (
+                <a
+                  href={clientPortalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="dash-card-editor-menu-btn no-underline"
+                  title="Ouvrir le portail client dans un nouvel onglet"
+                >
+                  <ExternalLink size={14} />
+                  Voir comme client
+                </a>
+              )}
+              <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button type="button" className="dash-card-editor-menu-btn">
                   <Plus size={14} />
@@ -272,14 +311,19 @@ export default function CardEditorSidebar({
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setOpenDialog("program")}>
                   <Stamp className="mr-2 h-4 w-4" />
-                  Programme tampons
+                  Programme fidélité
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setOpenDialog("rewards")}>
                   <Gift className="mr-2 h-4 w-4" />
                   Récompenses
                 </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setOpenDialog("enrollment")}>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Inscription client
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           </div>
         </div>
 
@@ -313,17 +357,34 @@ export default function CardEditorSidebar({
                 Aperçu démo
               </span>
               <span className="text-xs font-semibold tabular-nums text-[var(--dash-brand)]">
-                {previewStamps}/{state.stampThreshold}
+                {state.spendEnabled && state.stampsEnabled
+                  ? `${previewStamps}/${state.stampThreshold} · ${previewSpendDzd.toLocaleString("fr-DZ")} DZD`
+                  : state.spendEnabled
+                    ? `${previewSpendDzd.toLocaleString("fr-DZ")} / ${state.spendThresholdDzd.toLocaleString("fr-DZ")} DZD`
+                    : `${previewStamps}/${state.stampThreshold}`}
               </span>
             </div>
-            <input
-              type="range"
-              min={0}
-              max={state.stampThreshold}
-              value={previewStamps}
-              onChange={(e) => onPreviewStampsChange(Number(e.target.value))}
-              className="w-full accent-[var(--dash-brand)]"
-            />
+            {state.stampsEnabled && (
+              <input
+                type="range"
+                min={0}
+                max={state.stampThreshold}
+                value={previewStamps}
+                onChange={(e) => onPreviewStampsChange(Number(e.target.value))}
+                className="w-full accent-[var(--dash-brand)]"
+              />
+            )}
+            {state.spendEnabled && (
+              <input
+                type="range"
+                min={0}
+                max={state.spendThresholdDzd}
+                step={250}
+                value={previewSpendDzd}
+                onChange={(e) => onPreviewSpendDzdChange(Number(e.target.value))}
+                className={`w-full accent-[var(--dash-brand)]${state.stampsEnabled ? " mt-2" : ""}`}
+              />
+            )}
           </div>
 
           <div className="dash-card-editor-rows">
@@ -515,61 +576,296 @@ export default function CardEditorSidebar({
       <Dialog open={openDialog === "program"} onOpenChange={(o) => !o && setOpenDialog(null)}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Programme tampons</DialogTitle>
-            <DialogDescription>Règles de collecte et récompense finale.</DialogDescription>
+            <DialogTitle>Programme fidélité</DialogTitle>
+            <DialogDescription>
+              Activez un ou deux systèmes, puis configurez chaque bloc séparément.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-5 pt-2">
-            <div>
-              <label className="text-sm font-medium text-[var(--dash-text-secondary)]">
-                Nombre de tampons ({state.stampThreshold})
-              </label>
-              <input
-                type="range"
-                min={3}
-                max={20}
-                value={state.stampThreshold}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  patch({
-                    stampThreshold: v,
-                    stampMilestones: clampMilestonesToThreshold(state.stampMilestones, v),
-                  });
-                  if (previewStamps > v) onPreviewStampsChange(v);
-                }}
-                className="mt-2 w-full accent-[var(--dash-brand)]"
-              />
+            <section>
+              <p className="dash-loyalty-step-label">1 · Choisir le(s) système(s)</p>
+              <div className="dash-loyalty-mode-grid">
+                <button
+                  type="button"
+                  className={cn(
+                    "dash-loyalty-mode-toggle dash-loyalty-mode-toggle--stamps",
+                    state.stampsEnabled && "dash-loyalty-mode-toggle--active",
+                  )}
+                  onClick={() => {
+                    if (state.stampsEnabled && !state.spendEnabled) return;
+                    patch({ stampsEnabled: !state.stampsEnabled });
+                  }}
+                >
+                  {state.stampsEnabled && (
+                    <span className="dash-loyalty-mode-toggle-check" aria-hidden>
+                      <Check size={12} strokeWidth={3} />
+                    </span>
+                  )}
+                  <span className="dash-loyalty-mode-toggle-icon">
+                    <Stamp size={16} />
+                  </span>
+                  <span className="text-sm font-semibold">Tampons</span>
+                  <span className="text-xs text-[var(--dash-text-secondary)] leading-snug">
+                    1 visite validée = 1 tampon
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "dash-loyalty-mode-toggle dash-loyalty-mode-toggle--spend",
+                    state.spendEnabled && "dash-loyalty-mode-toggle--active",
+                  )}
+                  onClick={() => {
+                    if (state.spendEnabled && !state.stampsEnabled) return;
+                    patch({ spendEnabled: !state.spendEnabled });
+                  }}
+                >
+                  {state.spendEnabled && (
+                    <span className="dash-loyalty-mode-toggle-check" aria-hidden>
+                      <Check size={12} strokeWidth={3} />
+                    </span>
+                  )}
+                  <span className="dash-loyalty-mode-toggle-icon">
+                    <Coins size={16} />
+                  </span>
+                  <span className="text-sm font-semibold">Montant dépensé</span>
+                  <span className="text-xs text-[var(--dash-text-secondary)] leading-snug">
+                    Le worker saisit le montant à chaque achat
+                  </span>
+                </button>
+              </div>
+              {state.stampsEnabled && state.spendEnabled && (
+                <div className="dash-loyalty-dual-note mt-3">
+                  <Info size={15} />
+                  <span>
+                    Les deux systèmes sont <strong className="text-[var(--dash-text)]">indépendants</strong> mais
+                    cumulés à chaque visite : tampon + montant enregistrés ensemble.
+                  </span>
+                </div>
+              )}
+            </section>
+
+            {(state.stampsEnabled || state.spendEnabled) && (
+              <section>
+                <p className="dash-loyalty-step-label">2 · Configurer chaque système</p>
+                <div className="space-y-3">
+                  {state.stampsEnabled && (
+                    <div className="dash-loyalty-mode-panel dash-loyalty-mode-panel--stamps">
+                      <div className="dash-loyalty-mode-panel-head">
+                        <span className="dash-loyalty-mode-panel-icon">
+                          <Stamp size={15} />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="dash-loyalty-mode-panel-title">Système tampons</p>
+                          <p className="dash-loyalty-mode-panel-desc">
+                            Grille visible sur la carte · récompense au {state.stampThreshold}e tampon
+                          </p>
+                        </div>
+                      </div>
+                      <div className="dash-loyalty-mode-panel-body">
+                        <div className="dash-loyalty-field">
+                          <label htmlFor="stamp-threshold">
+                            Tampons pour la récompense ({state.stampThreshold})
+                          </label>
+                          <input
+                            id="stamp-threshold"
+                            type="range"
+                            min={3}
+                            max={20}
+                            value={state.stampThreshold}
+                            onChange={(e) => {
+                              const v = Number(e.target.value);
+                              patch({
+                                stampThreshold: v,
+                                stampMilestones: clampMilestonesToThreshold(state.stampMilestones, v),
+                              });
+                              if (previewStamps > v) onPreviewStampsChange(v);
+                            }}
+                            className="w-full accent-amber-600"
+                          />
+                        </div>
+                        <label className="flex items-start gap-2.5 cursor-pointer rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2.5">
+                          <input
+                            type="checkbox"
+                            checked={state.trackProducts}
+                            onChange={(e) => patch({ trackProducts: e.target.checked })}
+                            className="mt-0.5 rounded accent-amber-600"
+                          />
+                          <span className="text-sm leading-snug">
+                            <span className="font-medium block">Suivi des produits au scan</span>
+                            <span className="text-xs text-[var(--dash-text-secondary)]">
+                              Le worker choisit les articles avant d&apos;ajouter le tampon
+                            </span>
+                          </span>
+                        </label>
+                        <button
+                          type="button"
+                          className="dash-loyalty-link-btn"
+                          onClick={() => {
+                            setOpenDialog("rewards");
+                          }}
+                        >
+                          Prix intermédiaires sur la carte
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {state.spendEnabled && (
+                    <div className="dash-loyalty-mode-panel dash-loyalty-mode-panel--spend">
+                      <div className="dash-loyalty-mode-panel-head">
+                        <span className="dash-loyalty-mode-panel-icon">
+                          <Banknote size={15} />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="dash-loyalty-mode-panel-title">Système montant dépensé</p>
+                          <p className="dash-loyalty-mode-panel-desc">
+                            Barre de progression en DZD sur la carte client
+                          </p>
+                        </div>
+                      </div>
+                      <div className="dash-loyalty-mode-panel-body">
+                        <div className="dash-loyalty-field">
+                          <label htmlFor="spend-threshold">Seuil de dépenses (DZD)</label>
+                          <input
+                            id="spend-threshold"
+                            type="number"
+                            min={500}
+                            step={500}
+                            value={state.spendThresholdDzd}
+                            onChange={(e) =>
+                              patch({ spendThresholdDzd: Math.max(500, Number(e.target.value) || 0) })
+                            }
+                            className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm"
+                          />
+                          <p className="dash-loyalty-field-hint">
+                            Ex. {formatDzd(state.spendThresholdDzd)} cumulés → récompense débloquée, puis le compteur
+                            repart à zéro.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            <section>
+              <p className="dash-loyalty-step-label">3 · Paramètres communs</p>
+              <div className="dash-loyalty-mode-panel dash-loyalty-mode-panel--general">
+                <div className="dash-loyalty-mode-panel-head">
+                  <span className="dash-loyalty-mode-panel-icon">
+                    <Settings2 size={15} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="dash-loyalty-mode-panel-title">Règles générales</p>
+                    <p className="dash-loyalty-mode-panel-desc">
+                      S&apos;appliquent à tous les modes actifs
+                    </p>
+                  </div>
+                </div>
+                <div className="dash-loyalty-mode-panel-body">
+                  <div className="dash-loyalty-field">
+                    <label htmlFor="max-scans">
+                      Scans maximum par jour ({state.maxScansPerDay})
+                    </label>
+                    <input
+                      id="max-scans"
+                      type="range"
+                      min={1}
+                      max={10}
+                      value={state.maxScansPerDay}
+                      onChange={(e) => patch({ maxScansPerDay: Number(e.target.value) })}
+                      className="w-full accent-[var(--dash-brand)]"
+                    />
+                    <p className="dash-loyalty-field-hint">
+                      Limite anti-fraude : au-delà, le scan du jour est refusé.
+                    </p>
+                  </div>
+                  <div className="dash-loyalty-field">
+                    <label htmlFor="final-reward">Récompense finale</label>
+                    <input
+                      id="final-reward"
+                      className="w-full rounded-xl border border-[var(--dash-border)] px-3 py-2.5 text-sm"
+                      value={state.rewardValue}
+                      onChange={(e) => patch({ rewardValue: e.target.value })}
+                      placeholder="Ex. Café offert ou -20 %"
+                    />
+                    <p className="dash-loyalty-field-hint">
+                      {state.stampsEnabled && state.spendEnabled
+                        ? "Utilisée quand le client atteint le seuil de tampons ou le montant cumulé."
+                        : state.spendEnabled
+                          ? "Attribuée quand le montant cumulé atteint le seuil."
+                          : state.stampsEnabled
+                            ? "Attribuée au dernier tampon (ou via les prix intermédiaires)."
+                            : "Activez au moins un système ci-dessus."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <button
+              type="button"
+              className="dash-btn-primary"
+              disabled={updateSettings.isPending}
+              onClick={() => void applyAndClose()}
+            >
+              {updateSettings.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null}
+              Appliquer et enregistrer
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Enrollment dialog */}
+      <Dialog open={openDialog === "enrollment"} onOpenChange={(o) => !o && setOpenDialog(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Inscription client</DialogTitle>
+            <DialogDescription>
+              Choisissez les informations demandées quand un client crée sa carte via votre lien QR.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="dash-loyalty-mode-panel dash-loyalty-mode-panel--general">
+              <div className="dash-loyalty-mode-panel-head">
+                <span className="dash-loyalty-mode-panel-icon">
+                  <Mail size={15} />
+                </span>
+                <div className="min-w-0">
+                  <p className="dash-loyalty-mode-panel-title">Champs du formulaire</p>
+                  <p className="dash-loyalty-mode-panel-desc">
+                    Toujours demandés : nom et téléphone
+                  </p>
+                </div>
+              </div>
+              <div className="dash-loyalty-mode-panel-body">
+                <label className="flex items-start gap-2.5 cursor-pointer rounded-lg border border-[var(--dash-border)] px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={state.collectClientEmail}
+                    onChange={(e) => patch({ collectClientEmail: e.target.checked })}
+                    className="mt-0.5 rounded accent-[var(--dash-brand)]"
+                  />
+                  <span className="text-sm leading-snug">
+                    <span className="font-medium block">Collecter l&apos;email des clients</span>
+                    <span className="text-xs text-[var(--dash-text-secondary)]">
+                      Un champ email obligatoire apparaît à l&apos;inscription et est enregistré dans votre
+                      liste clients.
+                    </span>
+                  </span>
+                </label>
+                <p className="dash-loyalty-field-hint !mt-0">
+                  {state.collectClientEmail
+                    ? "Les clients doivent renseigner un email valide pour créer leur carte."
+                    : "Seuls le nom et le numéro de téléphone sont demandés à l'inscription."}
+                </p>
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-[var(--dash-text-secondary)]">
-                Scans max / jour ({state.maxScansPerDay})
-              </label>
-              <input
-                type="range"
-                min={1}
-                max={10}
-                value={state.maxScansPerDay}
-                onChange={(e) => patch({ maxScansPerDay: Number(e.target.value) })}
-                className="mt-2 w-full accent-[var(--dash-brand)]"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Récompense finale</label>
-              <input
-                className="mt-1 w-full rounded-xl border border-[var(--dash-border)] px-3 py-2.5 text-sm"
-                value={state.rewardValue}
-                onChange={(e) => patch({ rewardValue: e.target.value })}
-                placeholder="Ex. Café offert"
-              />
-            </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={state.trackProducts}
-                onChange={(e) => patch({ trackProducts: e.target.checked })}
-                className="rounded accent-[var(--dash-brand)]"
-              />
-              <span className="text-sm">Suivi des produits au scan</span>
-            </label>
             <button
               type="button"
               className="dash-btn-primary"
@@ -590,16 +886,35 @@ export default function CardEditorSidebar({
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Récompenses sur la carte</DialogTitle>
-            <DialogDescription>Prix attribués à des tampons précis.</DialogDescription>
+            <DialogDescription>
+              {state.stampsEnabled && state.spendEnabled
+                ? "Tampons intermédiaires + récompense au seuil de dépenses."
+                : state.spendEnabled
+                  ? "En mode montant, seule la récompense finale s'applique (réglée dans Programme)."
+                  : "Prix attribués à des tampons précis."}
+            </DialogDescription>
           </DialogHeader>
           <div className="pt-2">
-            <StampMilestonesEditor
-              hidePreview
-              stampThreshold={state.stampThreshold}
-              milestones={state.stampMilestones}
-              primaryColor={state.primaryColor}
-              onChange={(stampMilestones) => patch({ stampMilestones })}
-            />
+            {state.spendEnabled && !state.stampsEnabled ? (
+              <div className="rounded-xl border border-dashed border-[var(--dash-border)] p-4 text-sm text-[var(--dash-text-secondary)]">
+                Récompense à {formatDzd(state.spendThresholdDzd)} dépensés :{" "}
+                <span className="font-medium text-foreground">
+                  {state.rewardValue.trim() || "Non définie"}
+                </span>
+              </div>
+            ) : state.stampsEnabled ? (
+              <StampMilestonesEditor
+                hidePreview
+                stampThreshold={state.stampThreshold}
+                milestones={state.stampMilestones}
+                primaryColor={state.primaryColor}
+                onChange={(stampMilestones) => patch({ stampMilestones })}
+              />
+            ) : (
+              <p className="text-sm text-[var(--dash-text-secondary)]">
+                Activez les tampons dans Programme pour ajouter des récompenses intermédiaires.
+              </p>
+            )}
             <button
               type="button"
               className="dash-btn-primary mt-4"
@@ -625,11 +940,15 @@ export function defaultCardEditorState(settings?: {
   cardDesignId?: string | null;
   primaryColor?: string;
   secondaryColor?: string;
+  stampsEnabled?: boolean;
+  spendEnabled?: boolean;
   stampThreshold?: number;
+  spendThresholdDzd?: number;
   maxScansPerDay?: number;
   rewardValue?: string | null;
   stampMilestones?: StampMilestone[];
   trackProducts?: boolean;
+  collectClientEmail?: boolean;
 }): CardEditorState {
   return {
     businessName: settings?.businessName ?? "",
@@ -638,10 +957,14 @@ export function defaultCardEditorState(settings?: {
     cardDesignId: settings?.cardDesignId ?? DEFAULT_CARD_DESIGN_ID,
     primaryColor: settings?.primaryColor ?? DEFAULT_PRIMARY,
     secondaryColor: settings?.secondaryColor ?? DEFAULT_SECONDARY,
+    stampsEnabled: settings?.stampsEnabled !== false,
+    spendEnabled: settings?.spendEnabled === true,
     stampThreshold: settings?.stampThreshold ?? 9,
+    spendThresholdDzd: settings?.spendThresholdDzd ?? 10000,
     maxScansPerDay: settings?.maxScansPerDay ?? 2,
     rewardValue: settings?.rewardValue ?? "",
     stampMilestones: settings?.stampMilestones ?? [],
     trackProducts: settings?.trackProducts ?? true,
+    collectClientEmail: settings?.collectClientEmail === true,
   };
 }

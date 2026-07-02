@@ -9,11 +9,15 @@ export type CardEditorFields = {
   cardDesignId: string;
   primaryColor: string;
   secondaryColor: string;
+  stampsEnabled: boolean;
+  spendEnabled: boolean;
   stampThreshold: number;
+  spendThresholdDzd: number;
   maxScansPerDay: number;
   rewardValue: string;
   stampMilestones: StampMilestone[];
   trackProducts: boolean;
+  collectClientEmail: boolean;
 };
 
 export function cardEditorToShopSettings(
@@ -33,11 +37,16 @@ export function cardEditorToShopSettings(
       : DEFAULT_CARD_DESIGN_ID,
     primaryColor: state.primaryColor,
     secondaryColor: state.secondaryColor,
+    stampsEnabled: state.stampsEnabled,
+    spendEnabled: state.spendEnabled,
     stampThreshold: state.stampThreshold,
+    spendThresholdDzd: state.spendThresholdDzd,
     maxScansPerDay: state.maxScansPerDay,
     rewardValue: state.rewardValue.trim() || null,
-    stampMilestones: state.stampMilestones.filter((m) => m.label.trim()),
-    trackProducts: state.trackProducts,
+    stampMilestones:
+      state.stampsEnabled ? state.stampMilestones.filter((m) => m.label.trim()) : [],
+    trackProducts: state.stampsEnabled ? state.trackProducts : false,
+    collectClientEmail: state.collectClientEmail,
   };
 }
 

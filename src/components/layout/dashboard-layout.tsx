@@ -22,6 +22,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import SidebarTrialStatus from "@/components/billing/sidebar-trial-status";
+import TrialBanner, { useShowTrialBanner } from "@/components/billing/trial-banner";
+import OwnerPaywallOverlay from "@/components/billing/owner-paywall-overlay";
 import BrandLogo from "@/components/brand/mascot";
 import { useAuth } from "@/lib/auth";
 import { useLogout, useGetSettings } from "@/api";
@@ -224,9 +226,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const toggleSidebar = () => setSidebarCollapsed((c) => !c);
+  const showTrialBar = useShowTrialBanner();
 
   return (
-    <div className="dash-shell">
+    <div className="dash-shell" data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}>
       <div className="dash-layout">
         <motion.aside
           className={cn("dash-sidebar", sidebarCollapsed && "dash-sidebar--collapsed")}
@@ -288,9 +291,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <LanguageSwitcher variant="circle" className="dash-topbar-lang shrink-0" />
           </motion.header>
 
-          <main id="main-content" className="dash-content">
-            <div className="dash-content-inner">{children}</div>
+          <main
+            id="main-content"
+            className={cn("dash-content", showTrialBar && "dash-content--trial-bar")}
+          >
+            <div className="dash-content-inner dash-content-inner--gated">
+              {children}
+              <OwnerPaywallOverlay />
+            </div>
           </main>
+          <TrialBanner />
         </div>
       </div>
       <DashboardTour />

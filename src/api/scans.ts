@@ -16,7 +16,11 @@ export function useConfirmPurchaseScan() {
     mutationFn: async ({
       data,
     }: {
-      data: { pendingScanId: string; products: { productId: string; quantity: number }[] };
+      data: {
+        pendingScanId: string;
+        products?: { productId: string; quantity: number }[];
+        amountDzd?: number;
+      };
     }) => {
       return invokeFunction<Record<string, unknown>>("confirm-purchase-scan", data);
     },

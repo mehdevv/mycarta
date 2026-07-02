@@ -442,7 +442,11 @@ npm run build            # production build
 npm run deploy:functions # deploy all Supabase edge functions
 ```
 
-Supabase project ref: `qealyijgeosyvmfpojzq`. Migrations are applied in numeric order from `supabase/migrations/`.
+Supabase project ref: `qealyijgeosyvmfpojzq`. 
+
+**Full schema (empty project):** run `supabase/mycarta_full_schema.sql` once in the SQL Editor.
+
+**Incremental:** migrations in `supabase/migrations/` in numeric order; catch-up for existing DBs: `017_carta_schema_catchup.sql`.
 
 ---
 

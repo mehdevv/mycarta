@@ -10,9 +10,16 @@ import {
   PlatformButton,
   PlatformSkeleton,
 } from "@/components/platform/platform-ui";
+import {
+  TenantClientQrDialog,
+  TenantDeleteDialog,
+  TenantPlanDialog,
+} from "@/components/platform/tenant-admin-dialogs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, ExternalLink, Download } from "lucide-react";
+import { Search, Download, QrCode, Crown, Trash2, Eye } from "lucide-react";
 import { downloadCsv, formatDateFr } from "@/lib/platform-export";
+
+type DialogKind = "qr" | "plan" | "delete" | null;
 
 function exportTenantsCsv(rows: PlatformTenantRow[]) {
   downloadCsv(`carta-commerces-${new Date().toISOString().slice(0, 10)}.csv`, [
@@ -39,10 +46,22 @@ function exportTenantsCsv(rows: PlatformTenantRow[]) {
 }
 
 export default function PlatformTenantsPage() {
-  const { data: tenants = [], isLoading } = usePlatformTenants();
+  const { data: tenants = [], isLoading, refetch } = usePlatformTenants();
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTenant, setActiveTenant] = useState<PlatformTenantRow | null>(null);
+  const [dialog, setDialog] = useState<DialogKind>(null);
+
+  const openDialog = (tenant: PlatformTenantRow, kind: DialogKind) => {
+    setActiveTenant(tenant);
+    setDialog(kind);
+  };
+
+  const closeDialog = () => {
+    setDialog(null);
+    setActiveTenant(null);
+  };
 
   const filtered = useMemo(() => {
     return tenants.filter((t) => {
@@ -130,7 +149,7 @@ export default function PlatformTenantsPage() {
                     <th className="text-right">Équipe</th>
                     <th>Dernière activité</th>
                     <th className="text-center">Onb.</th>
-                    <th className="text-right" />
+                    <th className="text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -151,9 +170,42 @@ export default function PlatformTenantsPage() {
                       <td className="plat-cell-muted">{t.lastScanAt ? new Date(t.lastScanAt).toLocaleDateString("fr-DZ") : "—"}</td>
                       <td className="text-center">{t.onboardingComplete ? "✓" : "—"}</td>
                       <td className="text-right">
-                        <a href={`/${t.slug}/client`} target="_blank" rel="noreferrer" className="plat-link inline-flex items-center gap-1 text-xs">
-                          <ExternalLink className="h-3 w-3" />Page
-                        </a>
+                        <div className="inline-flex items-center justify-end gap-0.5">
+                          <PlatformButton
+                            size="sm"
+                            variant="secondary"
+                            className="!px-2"
+                            title="QR portail client"
+                            onClick={() => openDialog(t, "qr")}
+                          >
+                            <QrCode className="h-3.5 w-3.5" />
+                          </PlatformButton>
+                          <PlatformButton
+                            size="sm"
+                            variant="secondary"
+                            className="!px-2"
+                            title="Changer le plan"
+                            onClick={() => openDialog(t, "plan")}
+                          >
+                            <Crown className="h-3.5 w-3.5" />
+                          </PlatformButton>
+                          <Link
+                            href={`/platform/businesses/${t.id}`}
+                            className="plat-btn plat-btn--secondary plat-btn--sm !px-2 inline-flex items-center justify-center"
+                            title="Détails"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </Link>
+                          <PlatformButton
+                            size="sm"
+                            variant="danger"
+                            className="!px-2"
+                            title="Supprimer"
+                            onClick={() => openDialog(t, "delete")}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </PlatformButton>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -163,6 +215,24 @@ export default function PlatformTenantsPage() {
           )}
         </PlatformCardBody>
       </PlatformCard>
+
+      <TenantClientQrDialog
+        tenant={activeTenant}
+        open={dialog === "qr"}
+        onOpenChange={(open) => !open && closeDialog()}
+      />
+      <TenantPlanDialog
+        tenant={activeTenant}
+        open={dialog === "plan"}
+        onOpenChange={(open) => !open && closeDialog()}
+        onSuccess={() => refetch()}
+      />
+      <TenantDeleteDialog
+        tenant={activeTenant}
+        open={dialog === "delete"}
+        onOpenChange={(open) => !open && closeDialog()}
+        onDeleted={() => refetch()}
+      />
     </div>
   );
 }

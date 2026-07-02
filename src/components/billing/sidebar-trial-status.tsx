@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { AlertTriangle, ChevronDown, Clock } from "lucide-react";
 import { useCurrentTenant } from "@/lib/tenant-context";
 import { useGetAnalyticsOverview } from "@/api/analytics";
+import { useGetPlanUsage } from "@/api/tenant";
 import { readAiPromptUsage } from "@/lib/plan-quotas";
 import { getPlanQuotas } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
@@ -133,6 +134,7 @@ function TrialCard({ variant, icon: Icon, title, meta, expanded, onToggle, child
 export default function SidebarTrialStatus() {
   const { trialStatus, tenant } = useCurrentTenant();
   const { data: analytics } = useGetAnalyticsOverview();
+  const { data: planUsage } = useGetPlanUsage();
   const countdown = useTrialCountdown(trialStatus?.trialEndsAt ?? null);
   const [expanded, setExpanded] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -169,10 +171,14 @@ export default function SidebarTrialStatus() {
   }
 
   if (trialStatus.planId === "trial") {
-    const clientCount = analytics?.totalClients ?? 0;
-    const scansToday = analytics?.scansToday ?? 0;
-    const clientLimit = trialStatus.clientLimit ?? 250;
-    const scanLimit = trialStatus.scansPerDayLimit ?? 50;
+    const clientCount = planUsage?.clients ?? analytics?.totalClients ?? 0;
+    const clientLimit = trialStatus.clientLimit ?? 10;
+    const scansTotalLimit = trialStatus.scansTotalLimit;
+    const scanCount = scansTotalLimit != null
+      ? (planUsage?.scansTotal ?? 0)
+      : (planUsage?.scansToday ?? analytics?.scansToday ?? 0);
+    const scanLimit = scansTotalLimit ?? trialStatus.scansPerDayLimit ?? 25;
+    const scanLabel = scansTotalLimit != null ? "Scans (essai)" : "Scans aujourd'hui";
     const aiLimit = getPlanQuotas("trial").aiCardPromptsPerDay ?? 3;
     const aiUsed = readAiPromptUsage(tenant.id);
     const compactMeta = countdown || `${trialStatus.daysLeft}j`;
@@ -187,7 +193,7 @@ export default function SidebarTrialStatus() {
         onToggle={toggle}
       >
         <p className="dash-trial-hint dash-trial-hint--inline">
-          Accès complet — limité par les quotas ci-dessous.
+          Essai limité à {clientLimit} clients et {scanLimit} scans.
         </p>
         <div className="dash-trial-bars space-y-2.5">
           <RemainingBar
@@ -197,7 +203,7 @@ export default function SidebarTrialStatus() {
             timer={countdown}
           />
           <UsageBar label="Clients" value={clientCount} max={clientLimit} />
-          <UsageBar label="Scans aujourd'hui" value={scansToday} max={scanLimit} />
+          <UsageBar label={scanLabel} value={scanCount} max={scanLimit} />
           <UsageBar label="Prompts IA aujourd'hui" value={aiUsed} max={aiLimit} />
         </div>
         <Link href="/billing" className="dash-trial-hint" onClick={(e) => e.stopPropagation()}>

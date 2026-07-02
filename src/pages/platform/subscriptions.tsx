@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { usePlatformSubscriptions } from "@/api/platform";
+import type { PlatformSubscription } from "@/api/platform";
+import { SubscriptionDeleteDialog } from "@/components/platform/tenant-admin-dialogs";
 import {
   PlatformPageHeader,
   PlatformCard,
@@ -11,12 +13,13 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDzd } from "@/lib/pricing";
 import { downloadCsv } from "@/lib/platform-export";
-import { Download } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 
 export default function PlatformSubscriptionsPage() {
-  const { data: subscriptions = [], isLoading } = usePlatformSubscriptions();
+  const { data: subscriptions = [], isLoading, refetch } = usePlatformSubscriptions();
   const [statusFilter, setStatusFilter] = useState("all");
   const [planFilter, setPlanFilter] = useState("all");
+  const [deleteTarget, setDeleteTarget] = useState<PlatformSubscription | null>(null);
 
   const filtered = useMemo(() => {
     return subscriptions.filter((s) => {
@@ -103,6 +106,7 @@ export default function PlatformSubscriptionsPage() {
                     <th>Statut</th>
                     <th>Chargily</th>
                     <th>Fin</th>
+                    <th className="text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -118,6 +122,17 @@ export default function PlatformSubscriptionsPage() {
                       <td><StatusBadge status={s.status} /></td>
                       <td className="plat-cell-mono plat-cell-muted max-w-[120px] truncate">{s.chargily_payment_id ?? "—"}</td>
                       <td className="plat-cell-muted">{s.ends_at ? new Date(s.ends_at).toLocaleDateString("fr-DZ") : "—"}</td>
+                      <td className="text-right">
+                        <PlatformButton
+                          size="sm"
+                          variant="danger"
+                          className="!px-2"
+                          title="Supprimer l'abonnement"
+                          onClick={() => setDeleteTarget(s)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </PlatformButton>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -126,6 +141,13 @@ export default function PlatformSubscriptionsPage() {
           )}
         </PlatformCardBody>
       </PlatformCard>
+
+      <SubscriptionDeleteDialog
+        subscription={deleteTarget}
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 }

@@ -97,7 +97,7 @@ export default function DashboardOverview() {
           <div className="flex flex-wrap items-center justify-end gap-2">
             <DashboardVideoTutorialChip />
             <DashboardTutorialButton />
-          </div>
+        </div>
         }
       />
 

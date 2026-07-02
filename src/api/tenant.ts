@@ -27,6 +27,7 @@ export interface TrialStatus {
   campaignLimit: number | null;
   locationLimit: number | null;
   scansPerDayLimit: number | null;
+  scansTotalLimit: number | null;
 }
 
 export interface PlanUsage {
@@ -34,6 +35,7 @@ export interface PlanUsage {
   workers: number;
   campaignsThisMonth: number;
   scansToday: number;
+  scansTotal: number;
   locations: number;
 }
 
@@ -116,6 +118,7 @@ export function useGetTrialStatus(options?: { enabled?: boolean }) {
         campaignLimit: d.campaignLimit != null ? Number(d.campaignLimit) : null,
         locationLimit: d.locationLimit != null ? Number(d.locationLimit) : null,
         scansPerDayLimit: d.scansPerDayLimit != null ? Number(d.scansPerDayLimit) : null,
+        scansTotalLimit: d.scansTotalLimit != null ? Number(d.scansTotalLimit) : null,
       };
     },
   });
@@ -159,7 +162,7 @@ export function useGetPlanUsage(options?: { enabled?: boolean }) {
       const dayStart = new Date();
       dayStart.setHours(0, 0, 0, 0);
 
-      const [clientsRes, workersRes, scansRes, campaignsRes] = await Promise.all([
+      const [clientsRes, workersRes, scansTodayRes, scansTotalRes, campaignsRes] = await Promise.all([
         supabase
           .from("clients")
           .select("*", { count: "exact", head: true })
@@ -175,8 +178,14 @@ export function useGetPlanUsage(options?: { enabled?: boolean }) {
           .select("*", { count: "exact", head: true })
           .eq("tenant_id", tenantId)
           .eq("status", "approved")
-          .gt("stamps_added", 0)
+          .eq("scan_type", "purchase")
           .gte("scanned_at", dayStart.toISOString()),
+        supabase
+          .from("scan_logs")
+          .select("*", { count: "exact", head: true })
+          .eq("tenant_id", tenantId)
+          .eq("status", "approved")
+          .eq("scan_type", "purchase"),
         supabase
           .from("campaigns")
           .select("*", { count: "exact", head: true })
@@ -188,7 +197,8 @@ export function useGetPlanUsage(options?: { enabled?: boolean }) {
         clients: clientsRes.count ?? 0,
         workers: workersRes.count ?? 0,
         campaignsThisMonth: campaignsRes.error ? 0 : (campaignsRes.count ?? 0),
-        scansToday: scansRes.count ?? 0,
+        scansToday: scansTodayRes.count ?? 0,
+        scansTotal: scansTotalRes.count ?? 0,
         locations: 1,
       };
     },

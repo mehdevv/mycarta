@@ -27,6 +27,9 @@ export interface PlanFeature {
   workerLimit: number | null;
   campaignLimit: number | null;
   locationLimit: number | null;
+  scansPerDayLimit: number | null;
+  scansTotalLimit: number | null;
+  scansTotalLimitLabel?: string;
   clientLimitLabel: string;
   workerLimitLabel: string;
   campaignLabel: string;
@@ -87,18 +90,21 @@ export const PLANS: PlanFeature[] = [
     monthlyDzd: 0,
     annualDzd: 0,
     annualSavingsDzd: null,
-    clientLimit: 250,
+    clientLimit: 10,
     workerLimit: 3,
     campaignLimit: 3,
     locationLimit: 1,
-    clientLimitLabel: "250",
+    scansPerDayLimit: null,
+    scansTotalLimit: 25,
+    clientLimitLabel: "10",
     workerLimitLabel: "3",
     campaignLabel: "3 / mois",
     locationLabel: "1",
+    scansTotalLimitLabel: "25",
     cardDesign: "Toutes les fonctionnalités",
     support: "Email",
     supportResponse: "72h ouvrées",
-    description: `14 jours — accès complet à toutes les fonctionnalités, avec quotas d'essai`,
+    description: `14 jours — 10 clients et 25 scans inclus pour tester le programme`,
     capabilities: { ...trialCaps },
   },
   {
@@ -112,6 +118,8 @@ export const PLANS: PlanFeature[] = [
     workerLimit: 3,
     campaignLimit: 3,
     locationLimit: 1,
+    scansPerDayLimit: null,
+    scansTotalLimit: null,
     clientLimitLabel: "250",
     workerLimitLabel: "3",
     campaignLabel: "3 / mois",
@@ -133,6 +141,8 @@ export const PLANS: PlanFeature[] = [
     workerLimit: 15,
     campaignLimit: null,
     locationLimit: 3,
+    scansPerDayLimit: null,
+    scansTotalLimit: null,
     clientLimitLabel: "2 000",
     workerLimitLabel: "15",
     campaignLabel: "Illimitées",
@@ -154,6 +164,8 @@ export const PLANS: PlanFeature[] = [
     workerLimit: null,
     campaignLimit: null,
     locationLimit: null,
+    scansPerDayLimit: null,
+    scansTotalLimit: null,
     clientLimitLabel: "Illimité",
     workerLimitLabel: "Illimité",
     campaignLabel: "Illimitées",

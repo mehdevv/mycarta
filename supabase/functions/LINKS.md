@@ -50,9 +50,13 @@ Also run `supabase/migrations/002_platform_admin.sql` for platform stats.
 
 ## Supabase migration
 
-Run on a **new** Supabase project SQL editor:
+**New empty project (full mycarta schema):**
 
-`supabase/migrations/001_saas_complete.sql`
+`supabase/mycarta_full_schema.sql`
+
+**Existing project (catch-up only):**
+
+`supabase/migrations/017_carta_schema_catchup.sql`
 
 ## Edge Functions
 

@@ -52,6 +52,7 @@ export function PlanLimitsCard({
     campaignLimit: trialStatus?.campaignLimit ?? plan.campaignLimit,
     locationLimit: trialStatus?.locationLimit ?? plan.locationLimit,
     scansPerDayLimit: trialStatus?.scansPerDayLimit ?? null,
+    scansTotalLimit: trialStatus?.scansTotalLimit ?? plan.scansTotalLimit,
   };
 
   const rows: LimitRow[] = [
@@ -86,7 +87,15 @@ export function PlanLimitsCard({
     },
   ];
 
-  if (limits.scansPerDayLimit != null) {
+  if (limits.scansTotalLimit != null) {
+    rows.push({
+      key: "scans-total",
+      label: "Scans (essai)",
+      used: usage?.scansTotal ?? 0,
+      limit: limits.scansTotalLimit,
+      icon: ScanLine,
+    });
+  } else if (limits.scansPerDayLimit != null) {
     rows.push({
       key: "scans",
       label: "Scans aujourd'hui",

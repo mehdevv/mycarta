@@ -288,7 +288,8 @@ export type PlatformTenantAction =
   | "extend_trial"
   | "reset_onboarding"
   | "cancel_subscription"
-  | "delete_tenant";
+  | "delete_tenant"
+  | "delete_subscription";
 
 export const platformQueryKeys = {
   overview: ["platform-overview"] as const,
@@ -482,16 +483,29 @@ export function usePlatformTenantAction() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: {
-      tenantId: string;
+      tenantId?: string;
       action: PlatformTenantAction;
       days?: number;
       confirmSlug?: string;
+      subscriptionId?: string;
     }) => invokeFunction("platform-tenant-action", payload),
     onSuccess: (_, vars) => {
       invalidatePlatform(queryClient);
-      if (vars.action !== "delete_tenant") {
+      if (vars.action === "delete_subscription") {
+        queryClient.invalidateQueries({ queryKey: platformQueryKeys.subscriptions });
+      }
+      if (vars.tenantId) {
         queryClient.invalidateQueries({ queryKey: platformQueryKeys.tenant(vars.tenantId) });
       }
     },
   });
+}
+
+export function useDeletePlatformSubscription() {
+  const mutation = usePlatformTenantAction();
+  return {
+    ...mutation,
+    mutateAsync: (subscriptionId: string, tenantId?: string) =>
+      mutation.mutateAsync({ action: "delete_subscription", subscriptionId, tenantId }),
+  };
 }

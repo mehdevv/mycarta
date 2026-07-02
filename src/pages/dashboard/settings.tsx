@@ -1,5 +1,4 @@
 import SettingsPanel from "@/components/settings/settings-panel";
-import SettingsActivityLog from "@/components/settings/settings-activity-log";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { useGetSettings } from "@/api";
 
@@ -11,7 +10,6 @@ export default function Settings() {
       <div className="dash-settings-page">
         <div className="dash-skeleton h-16 w-64 mb-6" />
         <div className="dash-settings-layout">
-          <div className="dash-skeleton h-[520px] rounded-2xl" />
           <div className="dash-skeleton h-[520px] rounded-2xl" />
         </div>
       </div>
@@ -27,7 +25,6 @@ export default function Settings() {
       />
       <div className="dash-settings-layout">
         <SettingsPanel />
-        <SettingsActivityLog />
       </div>
     </div>
   );

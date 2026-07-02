@@ -28,6 +28,7 @@ const trialPlan = getPlan("trial");
 const perks = [
   "14 jours gratuits",
   `${trialPlan.clientLimitLabel} clients`,
+  `${trialPlan.scansTotalLimitLabel ?? "25"} scans`,
   `${trialPlan.workerLimitLabel} workers`,
   "Sans carte bancaire",
 ];

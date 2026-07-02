@@ -4,6 +4,8 @@ import { useGetClientCard, useGetTenantBySlug } from "@/api";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Gift, ChevronRight, Clock } from "lucide-react";
 import { parseStampMilestones } from "@/lib/stamp-milestones";
+import { spendProgressPercent } from "@/lib/spend-rewards";
+import { formatDzd } from "@/lib/pricing";
 import { motion } from "framer-motion";
 import { fadeUp, scaleIn, vibrate, cardReveal, headerStagger, headerItem } from "@/lib/motion";
 import ClientShell, { ClientLoading } from "@/components/client/client-shell";
@@ -11,11 +13,12 @@ import BrandLogo from "@/components/brand/mascot";
 import CardTemplateBody from "@/components/fidelity/card-template-body";
 import CardLinkBar from "@/components/client/card-link-bar";
 import { cardPageUrl, normalizeCardCode } from "@/lib/card-code";
-import { nextMilestoneHintText } from "@/lib/client-i18n";
+import { nextMilestoneHintText, spendRewardHintText } from "@/lib/client-i18n";
 import { useClientI18n } from "@/hooks/use-client-i18n";
 import { useEffect } from "react";
 import { useShopBranding, normalizeAssetUrl, resolveBusinessLogo } from "@/hooks/use-branding";
 import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
+import { resolveLoyaltyFlags } from "@/lib/loyalty-program";
 import { rememberClientTenantSlug, clientEnrolPath, getClientTenantSlug } from "@/lib/scoped-routes";
 
 export default function CardView() {
@@ -103,18 +106,37 @@ export default function CardView() {
     );
   }
 
+  const { stampsEnabled, spendEnabled } = resolveLoyaltyFlags(card);
   const milestones = parseStampMilestones(card.stampMilestones);
-  const progress = Math.min(100, (card.currentCycleStamps / card.stampThreshold) * 100);
-  const hint = nextMilestoneHintText(card.currentCycleStamps, card.stampThreshold, milestones, t);
+  const spendThreshold = card.spendThresholdDzd ?? 10000;
+  const currentSpend = card.currentCycleSpendDzd ?? 0;
+  const stampProgress = Math.min(100, (card.currentCycleStamps / card.stampThreshold) * 100);
+  const spendProgress = spendProgressPercent(currentSpend, spendThreshold);
+  const stampHint = stampsEnabled
+    ? nextMilestoneHintText(card.currentCycleStamps, card.stampThreshold, milestones, t)
+    : null;
+  const spendHint = spendEnabled
+    ? spendRewardHintText(currentSpend, spendThreshold, card.rewardValue, t)
+    : null;
   const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   const rewards = Array.isArray(card.rewards) ? card.rewards : [];
   const upcomingMilestones = milestones.filter((m) => m.position > card.currentCycleStamps);
-  const showRewardsSection = rewards.length > 0 || upcomingMilestones.length > 0;
+  const showRewardsSection =
+    rewards.length > 0 ||
+    (stampsEnabled && upcomingMilestones.length > 0) ||
+    (spendEnabled && Boolean(card.rewardValue?.trim()));
 
   const cardBg = normalizeAssetUrl(card.cardTemplateUrl) || branding.cardTemplateUrl;
   const secondary = branding.secondaryColor;
   const cardDesignId =
     card.cardDesignId ?? branding.cardDesignId ?? DEFAULT_CARD_DESIGN_ID;
+
+  const footerHint =
+    stampsEnabled && spendEnabled
+      ? `${t("showQrHint")} · ${t("spendQrHint")}`
+      : spendEnabled
+        ? t("spendQrHint")
+        : t("showQrHint");
 
   return (
     <ClientShell primaryColor={card.primaryColor} secondaryColor={secondary}>
@@ -170,13 +192,20 @@ export default function CardView() {
               secondaryColor={secondary}
               cardBg={cardBg}
               qrValue={cardPageUrl(card.cardCode)}
+              stampsEnabled={stampsEnabled}
+              spendEnabled={spendEnabled}
               stampThreshold={card.stampThreshold}
               currentStamps={card.currentCycleStamps}
+              spendThresholdDzd={spendThreshold}
+              currentCycleSpendDzd={currentSpend}
               milestones={milestones}
-              progress={progress}
-              hint={hint}
+              progress={stampProgress}
+              spendProgress={spendProgress}
+              hint={stampHint}
+              spendHint={spendHint}
               progressLabel={t("progress")}
-              footerHint={t("showQrHint")}
+              spendProgressLabel={t("spendProgress")}
+              footerHint={footerHint}
               animated
             />
           </motion.div>
@@ -248,7 +277,8 @@ export default function CardView() {
                     </motion.div>
                   );
                 })}
-                {upcomingMilestones.map((milestone, i) => (
+                {stampsEnabled &&
+                  upcomingMilestones.map((milestone, i) => (
                   <motion.div
                     key={`upcoming-${milestone.position}`}
                     initial={{ opacity: 0, y: 8 }}
@@ -267,6 +297,23 @@ export default function CardView() {
                     </div>
                   </motion.div>
                 ))}
+                {spendEnabled && card.rewardValue?.trim() && currentSpend < spendThreshold && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-3 p-4 rounded-2xl bg-white/60 backdrop-blur border border-dashed border-gray-300"
+                  >
+                    <div className="h-10 w-10 rounded-full flex items-center justify-center shrink-0 bg-gray-100 border border-gray-200">
+                      <Gift className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <div className="flex-1 text-left min-w-0">
+                      <p className="font-semibold text-muted-foreground truncate">{card.rewardValue}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {t("spendRewardUpcoming")} · {formatDzd(spendThreshold)}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
               </div>
             </motion.div>
           )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import {
   usePlatformTenantDetail,
@@ -15,31 +15,39 @@ import {
   PlatformButton,
   PlatformSkeleton,
 } from "@/components/platform/platform-ui";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  TenantClientQrDialog,
+  TenantDeleteDialog,
+  SubscriptionDeleteDialog,
+} from "@/components/platform/tenant-admin-dialogs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import type { PlanId } from "@/lib/pricing";
 import { formatDzd } from "@/lib/pricing";
-import { ArrowLeft, Users, QrCode, Gift, Package, ExternalLink, ShieldAlert, Coins } from "lucide-react";
+import { tenantClientLink } from "@/lib/links";
+import { BrandedQrCode } from "@/components/shared/branded-qr-code";
+import { useShopBranding } from "@/hooks/use-branding";
+import { ArrowLeft, Users, QrCode, Gift, Package, ExternalLink, ShieldAlert, Coins, Trash2 } from "lucide-react";
 
 export default function PlatformTenantDetailPage() {
   const params = useParams<{ id: string }>();
   const tenantId = params.id;
   const [, setLocation] = useLocation();
   const { data: tenant, isLoading, refetch } = usePlatformTenantDetail(tenantId);
+  const { logoUrl } = useShopBranding(tenant?.slug);
   const overridePlan = useOverrideTenantPlan();
   const tenantAction = usePlatformTenantAction();
   const { toast } = useToast();
   const [selectedPlan, setSelectedPlan] = useState<PlanId>("maison");
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [confirmSlug, setConfirmSlug] = useState("");
+  const [qrOpen, setQrOpen] = useState(false);
+  const [deleteSubscriptionId, setDeleteSubscriptionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (tenant?.planId) {
+      setSelectedPlan(tenant.planId as PlanId);
+    }
+  }, [tenant?.planId]);
 
   if (isLoading) {
     return (
@@ -79,23 +87,18 @@ export default function PlatformTenantDetailPage() {
   const handleOverride = async () => {
     try {
       await overridePlan.mutateAsync({ tenantId: tenant.id, planId: selectedPlan });
-      toast({ title: "Plan mis à jour" });
+      toast({ title: "Plan mis à jour", description: `${tenant.name} → ${selectedPlan}` });
       refetch();
     } catch (e) {
       toast({ title: "Erreur", description: e instanceof Error ? e.message : "Échec", variant: "destructive" });
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      await tenantAction.mutateAsync({ tenantId: tenant.id, action: "delete_tenant", confirmSlug });
-      setDeleteOpen(false);
-      setLocation("/platform/businesses");
-      toast({ title: "Commerce supprimé" });
-    } catch (e) {
-      toast({ title: "Erreur", description: e instanceof Error ? e.message : "Échec", variant: "destructive" });
-    }
-  };
+  const clientEnrolUrl = tenantClientLink(tenant.slug);
+
+  const subscriptionToDelete = deleteSubscriptionId
+    ? tenant.subscriptions.find((s) => s.id === deleteSubscriptionId)
+    : null;
 
   return (
     <div className="plat-stack">
@@ -117,11 +120,34 @@ export default function PlatformTenantDetailPage() {
           </>
         }
         action={
-          <a href={`/${tenant.slug}/client`} target="_blank" rel="noreferrer" className="plat-link inline-flex items-center gap-2 text-sm">
-            <ExternalLink className="h-4 w-4" />Page publique
-          </a>
+          <div className="flex flex-wrap items-center gap-2">
+            <PlatformButton size="sm" variant="secondary" className="gap-1.5" onClick={() => setQrOpen(true)}>
+              <QrCode className="h-4 w-4" />QR client
+            </PlatformButton>
+            <a href={clientEnrolUrl} target="_blank" rel="noreferrer" className="plat-link inline-flex items-center gap-2 text-sm">
+              <ExternalLink className="h-4 w-4" />Page publique
+            </a>
+          </div>
         }
       />
+
+      <PlatformCard>
+        <PlatformCardHeader title="QR portail client" />
+        <PlatformCardBody className="flex flex-col sm:flex-row items-center gap-6">
+          <div className="bg-white p-4 rounded-xl border shadow-sm shrink-0">
+            <BrandedQrCode value={clientEnrolUrl} size={160} logoUrl={logoUrl} />
+          </div>
+          <div className="space-y-2 text-sm min-w-0 flex-1">
+            <p className="plat-cell-muted">
+              Code à imprimer ou afficher en caisse — les clients accèdent à l&apos;inscription sans application.
+            </p>
+            <p className="font-mono text-xs break-all opacity-70">{clientEnrolUrl}</p>
+            <PlatformButton size="sm" variant="secondary" onClick={() => setQrOpen(true)}>
+              Agrandir le QR
+            </PlatformButton>
+          </div>
+        </PlatformCardBody>
+      </PlatformCard>
 
       <div className="plat-stat-grid">
         <PlatformKpi title="Clients" value={tenant.clientCount} subtitle={`${tenant.activeCardCount ?? tenant.clientCount} actifs · ${tenant.blockedCardCount ?? 0} bloqués`} icon={Users} />
@@ -170,7 +196,9 @@ export default function PlatformTenantDetailPage() {
                   <SelectItem value="prestige">Prestige</SelectItem>
                 </SelectContent>
               </Select>
-              <PlatformButton size="sm" onClick={handleOverride} disabled={overridePlan.isPending}>Override plan</PlatformButton>
+              <PlatformButton size="sm" onClick={handleOverride} disabled={overridePlan.isPending}>
+                Promouvoir / changer plan
+              </PlatformButton>
             </div>
           </PlatformCardBody>
         </PlatformCard>
@@ -264,9 +292,20 @@ export default function PlatformTenantDetailPage() {
           <PlatformCardBody className="space-y-3">
             {tenant.subscriptions.map((s) => (
               <div key={s.id} className="plat-meta-box">
-                <div className="flex justify-between gap-2">
+                <div className="flex justify-between gap-2 items-start">
                   <span className="plat-cell-primary">{s.planId}</span>
-                  <StatusBadge status={s.status} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={s.status} />
+                    <PlatformButton
+                      size="sm"
+                      variant="danger"
+                      className="!px-2"
+                      title="Supprimer l'abonnement"
+                      onClick={() => setDeleteSubscriptionId(s.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </PlatformButton>
+                  </div>
                 </div>
                 <p className="plat-cell-muted mt-1">{formatDzd(s.amountDzd)} · {s.billingPeriod}</p>
                 {s.chargilyPaymentId && <p className="plat-cell-mono plat-cell-muted text-xs mt-1">Chargily: {s.chargilyPaymentId}</p>}
@@ -287,19 +326,37 @@ export default function PlatformTenantDetailPage() {
         </PlatformCard>
       </div>
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="plat-dialog">
-          <DialogHeader>
-            <DialogTitle>Supprimer {tenant.name} ?</DialogTitle>
-            <DialogDescription>Cette action est irréversible. Tapez <strong>{tenant.slug}</strong> pour confirmer.</DialogDescription>
-          </DialogHeader>
-          <input className="plat-input" value={confirmSlug} onChange={(e) => setConfirmSlug(e.target.value)} placeholder={tenant.slug} />
-          <DialogFooter>
-            <PlatformButton variant="secondary" onClick={() => setDeleteOpen(false)}>Annuler</PlatformButton>
-            <PlatformButton variant="danger" onClick={handleDelete} disabled={confirmSlug !== tenant.slug || tenantAction.isPending}>Supprimer</PlatformButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TenantClientQrDialog
+        tenant={tenant}
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+      />
+
+      <TenantDeleteDialog
+        tenant={tenant}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onDeleted={() => setLocation("/platform/businesses")}
+      />
+
+      <SubscriptionDeleteDialog
+        subscription={
+          subscriptionToDelete
+            ? {
+                id: subscriptionToDelete.id,
+                tenant_id: tenant.id,
+                plan_id: subscriptionToDelete.planId,
+                status: subscriptionToDelete.status,
+                amount_dzd: subscriptionToDelete.amountDzd,
+                billing_period: subscriptionToDelete.billingPeriod,
+                tenants: { name: tenant.name, slug: tenant.slug },
+              }
+            : null
+        }
+        open={!!deleteSubscriptionId}
+        onOpenChange={(open) => !open && setDeleteSubscriptionId(null)}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 }

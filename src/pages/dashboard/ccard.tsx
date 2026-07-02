@@ -10,6 +10,7 @@ import CardEditorSidebar, {
   type CardEditorState,
 } from "@/components/fidelity/card-editor-sidebar";
 import { clampMilestonesToThreshold } from "@/lib/stamp-milestones";
+import { spendProgressPercent } from "@/lib/spend-rewards";
 
 export default function CardEditorPage() {
   const { data: settings, isLoading } = useGetSettings();
@@ -18,12 +19,16 @@ export default function CardEditorPage() {
 
   const [state, setState] = useState<CardEditorState>(() => defaultCardEditorState());
   const [previewStamps, setPreviewStamps] = useState(3);
+  const [previewSpendDzd, setPreviewSpendDzd] = useState(3500);
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     if (!settings || dirty) return;
     setState(defaultCardEditorState(settings));
     setPreviewStamps((prev) => Math.min(prev, settings.stampThreshold ?? 9));
+    setPreviewSpendDzd((prev) =>
+      Math.min(prev, Math.max(0, (settings.spendThresholdDzd ?? 10000) - 500)),
+    );
   }, [settings, dirty]);
 
   const handleChange = (next: CardEditorState) => {
@@ -72,8 +77,13 @@ export default function CardEditorPage() {
             cardDesignId={state.cardDesignId}
             primaryColor={state.primaryColor}
             secondaryColor={state.secondaryColor}
+            stampsEnabled={state.stampsEnabled}
+            spendEnabled={state.spendEnabled}
             stampThreshold={state.stampThreshold}
             currentStamps={previewStamps}
+            spendThresholdDzd={state.spendThresholdDzd}
+            currentCycleSpendDzd={previewSpendDzd}
+            rewardValue={state.rewardValue}
             milestones={milestones}
             showCustomBg={limits.canCustomCardBackground}
           />
@@ -82,9 +92,10 @@ export default function CardEditorPage() {
         <CardEditorSidebar
           state={state}
           previewStamps={previewStamps}
-          dirty={dirty}
+          previewSpendDzd={previewSpendDzd}
           onChange={handleChange}
           onPreviewStampsChange={setPreviewStamps}
+          onPreviewSpendDzdChange={setPreviewSpendDzd}
           onSaved={handleSaved}
         />
       </div>

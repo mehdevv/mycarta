@@ -19,6 +19,10 @@ function normalizePhone(phone: string) {
   return phone.replace(/\s+/g, "").trim();
 }
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { status: 200, headers: corsHeaders });
@@ -46,6 +50,22 @@ Deno.serve(async (req) => {
 
     const tenant = await resolveTenantBySlug(admin, tenantSlugValue);
     if (!tenant) return jsonResponse({ error: "Shop not found" }, 404);
+
+    const { data: shopSettings } = await admin
+      .from("shop_settings")
+      .select("collect_client_email")
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+
+    const collectEmail = shopSettings?.collect_client_email === true;
+    const trimmedEmail = typeof email === "string" ? email.trim() : "";
+    if (collectEmail && !trimmedEmail) {
+      return jsonResponse({ error: "email is required" }, 400);
+    }
+    if (trimmedEmail && !isValidEmail(trimmedEmail)) {
+      return jsonResponse({ error: "Invalid email address" }, 400);
+    }
+    const emailToSave = collectEmail ? trimmedEmail : null;
 
     const limits = await checkPlanLimits(admin, tenant.id, "enrol_client");
     if (!limits.allowed) {
@@ -78,7 +98,7 @@ Deno.serve(async (req) => {
         tenant_id: tenant.id,
         full_name: fullName.trim(),
         phone: normalizedPhone,
-        email: email?.trim() || null,
+        email: emailToSave,
       })
       .select("card_code, full_name, phone")
       .single();

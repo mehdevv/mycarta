@@ -1826,6 +1826,81 @@ html:has(.landing-page) {
     }
   }
 
+  .landing-hero-illustration-frame {
+    width: 100%;
+    max-width: min(520px, 100%);
+  }
+  @media (max-width: 639px) {
+    .landing-hero-illustration-frame {
+      max-width: min(360px, 92vw);
+    }
+  }
+
+  .landing-hero-illustration-stack {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+  }
+
+  .landing-hero-loader {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    width: 100%;
+  }
+
+  .landing-hero-loader-segment {
+    flex: 1;
+    height: 3px;
+    padding: 0;
+    border: none;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  .landing-hero-loader-fill {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: #000;
+  }
+
+  .landing-hero-loader-segment.is-complete .landing-hero-loader-fill {
+    width: 100%;
+  }
+
+  .landing-hero-loader-segment.is-active .landing-hero-loader-fill {
+    animation: landingHeroLoaderFill var(--hero-image-interval-ms, 5000ms) linear forwards;
+  }
+
+  @keyframes landingHeroLoaderFill {
+    from {
+      width: 0;
+    }
+    to {
+      width: 100%;
+    }
+  }
+
+  .landing-hero-illustration-stack .landing-hero-illustration {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    opacity: 0;
+    transition: opacity var(--hero-image-fade-ms, 900ms) ease-in-out;
+    pointer-events: none;
+  }
+
+  .landing-hero-illustration-stack .landing-hero-illustration.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .landing-hero-illustration {
     width: 100%;
     max-width: min(520px, 100%);
