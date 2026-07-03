@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import SidebarTrialStatus from "@/components/billing/sidebar-trial-status";
 import TrialBanner, { useShowTrialBanner } from "@/components/billing/trial-banner";
+import PageMeta from "@/components/seo/page-meta";
 import OwnerPaywallOverlay from "@/components/billing/owner-paywall-overlay";
 import BrandLogo from "@/components/brand/mascot";
 import { useAuth } from "@/lib/auth";
@@ -230,6 +231,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="dash-shell" data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}>
+      <PageMeta title="Tableau de bord" noIndex />
       <div className="dash-layout">
         <motion.aside
           className={cn("dash-sidebar", sidebarCollapsed && "dash-sidebar--collapsed")}

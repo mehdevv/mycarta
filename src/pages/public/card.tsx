@@ -20,6 +20,8 @@ import { useShopBranding, normalizeAssetUrl, resolveBusinessLogo } from "@/hooks
 import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
 import { resolveLoyaltyFlags } from "@/lib/loyalty-program";
 import { rememberClientTenantSlug, clientEnrolPath, getClientTenantSlug } from "@/lib/scoped-routes";
+import PageMeta from "@/components/seo/page-meta";
+import { absoluteUrl, buildTenantCardMeta } from "@/lib/seo";
 
 export default function CardView() {
   const [, slugParams] = useRoute("/:slug/card/:code");
@@ -138,8 +140,15 @@ export default function CardView() {
         ? t("spendQrHint")
         : t("showQrHint");
 
+  const cardSlug = tenantSlug || getClientTenantSlug() || "";
+  const cardMeta = {
+    ...buildTenantCardMeta(businessName || card.businessName, cardSlug, businessLogo),
+    url: absoluteUrl(cardSlug ? `/${cardSlug}/card/${code}` : `/card/${code}`),
+  };
+
   return (
     <ClientShell primaryColor={card.primaryColor} secondaryColor={secondary}>
+      <PageMeta {...cardMeta} />
       <motion.div
         className="flex flex-col min-h-[100dvh] max-w-md mx-auto pb-6"
         variants={fadeUp}

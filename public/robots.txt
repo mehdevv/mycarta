@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Allow: /client
+Allow: /signup
+Allow: /tarifs
+Allow: /legal/
+Disallow: /dashboard
+Disallow: /worker
+Disallow: /platform
+Disallow: /shop
+Disallow: /setup
+Disallow: /api/
+
+Sitemap: https://mycarta.online/sitemap.xml

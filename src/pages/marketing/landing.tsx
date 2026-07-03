@@ -16,8 +16,12 @@ import {
   scrollToHashFromUrl,
   scrollToLandingSection,
 } from "@/lib/landing-scroll";
+import PageMeta from "@/components/seo/page-meta";
+import { LANDING_JSON_LD } from "@/lib/seo";
+import { usePlatformBranding } from "@/hooks/use-branding";
 
 export default function LandingPage() {
+  const platform = usePlatformBranding();
   useEffect(() => {
     const runScroll = () => {
       const pending = consumePendingLandingScroll();
@@ -42,6 +46,11 @@ export default function LandingPage() {
 
   return (
     <main className="landing-page min-h-screen">
+      <PageMeta
+        title="Cartes fidélité digitales pour commerces"
+        description={`${platform.tagline}. Scans QR, tampons et récompenses — sans application à installer pour vos clients.`}
+        jsonLd={LANDING_JSON_LD}
+      />
       <LandingNav />
       <LandingHero />
       <LandingTutorials />

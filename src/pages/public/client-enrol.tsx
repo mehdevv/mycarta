@@ -19,6 +19,8 @@ import { resolveBusinessLogo } from "@/hooks/use-branding";
 import { useRoute } from "wouter";
 import { clientCardPath, rememberClientTenantSlug } from "@/lib/scoped-routes";
 import ClientPortalClosed from "@/components/client/client-portal-closed";
+import PageMeta from "@/components/seo/page-meta";
+import { buildTenantClientMeta } from "@/lib/seo";
 
 type ClientEnrolProps = {
   tenantSlug?: string;
@@ -134,17 +136,26 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
 
   if (tenantMeta?.isAccessAllowed === false) {
     return (
-      <ClientPortalClosed
+      <>
+        <PageMeta
+          {...buildTenantClientMeta(shopName, tenantSlug, businessLogo)}
+          noIndex
+        />
+        <ClientPortalClosed
         businessName={shopName}
         logoUrl={businessLogo}
         primaryColor={primary}
         secondaryColor={secondary}
       />
+      </>
     );
   }
 
+  const enrolMeta = buildTenantClientMeta(shopName, tenantSlug, businessLogo);
+
   return (
     <ClientShell primaryColor={primary} secondaryColor={secondary}>
+      <PageMeta {...enrolMeta} />
       <div className="flex min-h-[100dvh] flex-col items-center justify-center p-4 py-8">
         <ClientCard className="overflow-hidden w-full">
           <div className="p-6 pb-4 text-center border-b border-border/50">

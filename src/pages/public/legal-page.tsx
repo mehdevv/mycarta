@@ -5,6 +5,8 @@ import { usePlatformBranding } from "@/hooks/use-branding";
 import { getLegalPage, isLegalSlug } from "@/lib/legal/pages";
 import { LANDING_FOOTER_LEGAL_LINKS } from "@/components/landing/nav-links";
 import NotFound from "@/pages/not-found";
+import PageMeta from "@/components/seo/page-meta";
+import { absoluteUrl } from "@/lib/seo";
 
 export default function LegalPage() {
   const [, params] = useRoute("/legal/:slug");
@@ -21,6 +23,11 @@ export default function LegalPage() {
 
   return (
     <MarketingPageShell>
+      <PageMeta
+        title={page.title}
+        description={page.intro}
+        url={absoluteUrl(`/legal/${slug}`)}
+      />
       <article className="container-page py-14 lg:py-20 max-w-3xl">
         <p className="landing-eyebrow">{platform.name}</p>
         <h1 className="landing-h2 mt-3">{page.title}</h1>
