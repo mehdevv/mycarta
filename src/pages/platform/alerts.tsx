@@ -41,6 +41,8 @@ export default function PlatformAlertsPage() {
           <div className="plat-stat-grid">
             <PlatformKpi title="Essais J-3" value={alerts.trialExpiring3d} icon={Clock} accent="amber" />
             <PlatformKpi title="Essais J-7" value={alerts.trialExpiring7d} icon={Clock} accent="amber" />
+            <PlatformKpi title="Abos J-7" value={alerts.subscriptionExpiring7d ?? 0} icon={Clock} accent="destructive" />
+            <PlatformKpi title="Abos J-30" value={alerts.subscriptionExpiring30d ?? 0} icon={Clock} accent="amber" />
             <PlatformKpi title="Reçus &gt; 48h" value={alerts.pendingReceiptsOver48h} icon={Receipt} accent="destructive" />
             <PlatformKpi title="Inactifs 14j+" value={alerts.inactiveTenants14d} icon={Building2} accent="destructive" />
           </div>

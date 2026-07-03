@@ -22,7 +22,7 @@ const TenantContext = createContext<TenantContextValue>({
 
 export function TenantProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuth();
-  const enabled = isAuthenticated && user?.role !== "super_admin";
+  const enabled = isAuthenticated && user?.role !== "super_admin" && user?.role !== "sales_rep" && user?.role !== "affiliate";
 
   const { data: tenant, isPending: tenantPending } = useGetCurrentTenant({ enabled });
   const { data: trialStatus, isPending: trialPending } = useGetTrialStatus({

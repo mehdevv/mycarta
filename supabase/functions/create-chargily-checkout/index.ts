@@ -53,15 +53,29 @@ Deno.serve(async (req) => {
     const { data: plan } = await admin.from("plans").select("*").eq("id", planId).single();
     if (!plan) return jsonResponse({ error: "Plan not found" }, 404);
 
-    const amount =
+    const listAmount =
       billingPeriod === "annual" ? plan.price_annual_dzd : plan.price_monthly_dzd;
-    if (!amount) return jsonResponse({ error: "Plan not available for online checkout" }, 400);
+    if (!listAmount) return jsonResponse({ error: "Plan not available for online checkout" }, 400);
+
+    const { data: pricing } = await admin.rpc("resolve_tenant_affiliate_pricing", {
+      p_tenant_id: profile.tenant_id,
+      p_plan_id: planId,
+      p_billing_period: billingPeriod,
+    });
+
+    const amount = pricing?.eligible ? pricing.amountDzd : listAmount;
 
     const { data: tenant } = await admin
       .from("tenants")
-      .select("slug, name")
+      .select("slug, name, billing_full_name, billing_phone, billing_email")
       .eq("id", profile.tenant_id)
       .single();
+
+    if (!tenant?.billing_full_name || !tenant?.billing_phone || !tenant?.billing_email) {
+      return jsonResponse({
+        error: "Complétez vos coordonnées de facturation avant de payer",
+      }, 400);
+    }
 
     const { data: sub, error: subError } = await admin
       .from("subscriptions")
@@ -105,7 +119,9 @@ Deno.serve(async (req) => {
           tenant_id: profile.tenant_id,
           plan_id: planId,
         },
-        customer_email: profile.email,
+        customer_email: tenant.billing_email,
+        customer_name: tenant.billing_full_name,
+        customer_phone: tenant.billing_phone,
       }),
     });
 

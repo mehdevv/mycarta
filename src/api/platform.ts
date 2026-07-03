@@ -227,6 +227,8 @@ export interface PlatformAlertItem {
 export interface PlatformAlerts {
   trialExpiring3d: number;
   trialExpiring7d: number;
+  subscriptionExpiring7d?: number;
+  subscriptionExpiring30d?: number;
   pendingReceiptsOver48h: number;
   inactiveTenants14d: number;
   items: PlatformAlertItem[];
@@ -249,6 +251,15 @@ export interface PlatformSettingsRow {
   support_email: string;
   maintenance_enabled: boolean;
   maintenance_banner: string;
+  commission_rate_boutique: number;
+  commission_rate_maison: number;
+  commission_rate_prestige: number;
+  affiliate_price_boutique_monthly: number;
+  affiliate_price_boutique_annual: number;
+  affiliate_price_maison_monthly: number;
+  affiliate_price_maison_annual: number;
+  affiliate_commission_rate_boutique: number;
+  affiliate_commission_rate_maison: number;
   updated_at: string;
 }
 
@@ -440,6 +451,15 @@ export function useUpdatePlatformSettings() {
           support_email: payload.support_email,
           maintenance_enabled: payload.maintenance_enabled,
           maintenance_banner: payload.maintenance_banner,
+          commission_rate_boutique: payload.commission_rate_boutique,
+          commission_rate_maison: payload.commission_rate_maison,
+          commission_rate_prestige: payload.commission_rate_prestige,
+          affiliate_price_boutique_monthly: payload.affiliate_price_boutique_monthly,
+          affiliate_price_boutique_annual: payload.affiliate_price_boutique_annual,
+          affiliate_price_maison_monthly: payload.affiliate_price_maison_monthly,
+          affiliate_price_maison_annual: payload.affiliate_price_maison_annual,
+          affiliate_commission_rate_boutique: payload.affiliate_commission_rate_boutique,
+          affiliate_commission_rate_maison: payload.affiliate_commission_rate_maison,
           updated_at: new Date().toISOString(),
         })
         .eq("id", "default");

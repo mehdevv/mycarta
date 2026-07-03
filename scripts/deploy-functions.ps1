@@ -45,6 +45,8 @@ $Functions = @(
     "chargily-webhook",
     "submit-payment-receipt",
     "review-payment-receipt",
+    "create-affiliate",
+    "create-sales-rep",
     "override-tenant-plan",
     "platform-tenant-action",
     "ai-card-design"

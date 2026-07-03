@@ -62,6 +62,41 @@ Deno.serve(async (req) => {
       })
       .eq("id", tenantId);
 
+    const { data: tenantRow } = await admin
+      .from("tenants")
+      .select("referred_affiliate_id")
+      .eq("id", tenantId)
+      .single();
+
+    if (tenantRow?.referred_affiliate_id) {
+      await admin.rpc("start_tenant_affiliate_benefit", { p_tenant_id: tenantId });
+    }
+
+    const { data: subRow } = await admin
+      .from("subscriptions")
+      .select("amount_dzd, billing_period")
+      .eq("id", subscriptionId)
+      .single();
+
+    if (subRow?.amount_dzd) {
+      if (tenantRow?.referred_affiliate_id) {
+        await admin.rpc("create_affiliate_commission_for_subscription", {
+          p_tenant_id: tenantId,
+          p_subscription_id: subscriptionId,
+          p_plan_id: planId,
+          p_amount_dzd: subRow.amount_dzd,
+          p_billing_period: subRow.billing_period ?? "monthly",
+        });
+      } else {
+        await admin.rpc("create_sales_commission_for_subscription", {
+          p_tenant_id: tenantId,
+          p_subscription_id: subscriptionId,
+          p_plan_id: planId,
+          p_amount_dzd: subRow.amount_dzd,
+        });
+      }
+    }
+
     return new Response(JSON.stringify({ success: true }), {
       headers: { "Content-Type": "application/json" },
     });

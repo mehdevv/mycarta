@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   usePlatformTenantDetail,
   useOverrideTenantPlan,
   usePlatformTenantAction,
 } from "@/api/platform";
+import { useAssignTenantSalesRep, useSalesReps } from "@/api/sales";
+import { supabase } from "@/lib/supabase";
 import {
   PlatformKpi,
   PlatformPageHeader,
@@ -37,8 +40,11 @@ export default function PlatformTenantDetailPage() {
   const { logoUrl } = useShopBranding(tenant?.slug);
   const overridePlan = useOverrideTenantPlan();
   const tenantAction = usePlatformTenantAction();
+  const { data: reps = [] } = useSalesReps();
+  const assignRep = useAssignTenantSalesRep();
   const { toast } = useToast();
   const [selectedPlan, setSelectedPlan] = useState<PlanId>("maison");
+  const [selectedRepId, setSelectedRepId] = useState<string>("none");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [deleteSubscriptionId, setDeleteSubscriptionId] = useState<string | null>(null);
@@ -48,6 +54,24 @@ export default function PlatformTenantDetailPage() {
       setSelectedPlan(tenant.planId as PlanId);
     }
   }, [tenant?.planId]);
+
+  const { data: assignedRepId } = useQuery({
+    queryKey: ["tenant-assigned-rep", tenantId],
+    enabled: !!tenantId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tenants")
+        .select("assigned_sales_rep_id")
+        .eq("id", tenantId)
+        .single();
+      if (error) throw error;
+      return (data?.assigned_sales_rep_id as string | null) ?? null;
+    },
+  });
+
+  useEffect(() => {
+    setSelectedRepId(assignedRepId ?? "none");
+  }, [assignedRepId]);
 
   if (isLoading) {
     return (
@@ -88,6 +112,19 @@ export default function PlatformTenantDetailPage() {
     try {
       await overridePlan.mutateAsync({ tenantId: tenant.id, planId: selectedPlan });
       toast({ title: "Plan mis à jour", description: `${tenant.name} → ${selectedPlan}` });
+      refetch();
+    } catch (e) {
+      toast({ title: "Erreur", description: e instanceof Error ? e.message : "Échec", variant: "destructive" });
+    }
+  };
+
+  const handleAssignRep = async () => {
+    try {
+      await assignRep.mutateAsync({
+        tenantId: tenant.id,
+        repId: selectedRepId === "none" ? null : selectedRepId,
+      });
+      toast({ title: "Commercial assigné" });
       refetch();
     } catch (e) {
       toast({ title: "Erreur", description: e instanceof Error ? e.message : "Échec", variant: "destructive" });
@@ -197,8 +234,25 @@ export default function PlatformTenantDetailPage() {
                 </SelectContent>
               </Select>
               <PlatformButton size="sm" onClick={handleOverride} disabled={overridePlan.isPending}>
-                Promouvoir / changer plan
+                Appliquer plan
               </PlatformButton>
+            </div>
+            <div className="pt-4 border-t border-white/10 space-y-3">
+              <p className="plat-label">Commercial assigné</p>
+              <div className="plat-toolbar items-end">
+                <Select value={selectedRepId} onValueChange={setSelectedRepId}>
+                  <SelectTrigger className="plat-select w-56"><SelectValue placeholder="Aucun" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Aucun</SelectItem>
+                    {reps.filter((r) => r.is_active).map((rep) => (
+                      <SelectItem key={rep.id} value={rep.id}>{rep.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <PlatformButton size="sm" variant="secondary" onClick={handleAssignRep} disabled={assignRep.isPending}>
+                  Assigner
+                </PlatformButton>
+              </div>
             </div>
           </PlatformCardBody>
         </PlatformCard>

@@ -1,0 +1,200 @@
+/* Rep CRM portal — extends platform shell */
+
+.rep-pipeline-head {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.rep-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .rep-stat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.rep-tenant-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.rep-tenant-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.rep-tenant-card--urgent {
+  border-color: rgba(251, 146, 60, 0.45);
+}
+
+.rep-tenant-card--critical {
+  border-color: rgba(248, 113, 113, 0.5);
+}
+
+.rep-tenant-card__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 1rem 1.1rem 0.75rem;
+}
+
+.rep-tenant-card__sub {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.85rem 1.1rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.rep-access-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.rep-access-bar__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: rgba(242, 242, 240, 0.72);
+}
+
+.rep-access-bar__track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.rep-access-bar__fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.2s ease;
+}
+
+.rep-access-bar__fill--ok {
+  background: linear-gradient(90deg, #0e9f6e, #34d399);
+}
+
+.rep-access-bar__fill--warn {
+  background: linear-gradient(90deg, #d97706, #fbbf24);
+}
+
+.rep-access-bar__fill--danger {
+  background: linear-gradient(90deg, #dc2626, #f87171);
+}
+
+.rep-mini-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .rep-mini-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.rep-mini-stat {
+  border-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 0.55rem 0.65rem;
+}
+
+.rep-mini-stat__label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(242, 242, 240, 0.55);
+}
+
+.rep-mini-stat__value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f2f2f0;
+  margin-top: 0.15rem;
+}
+
+.rep-contact-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  font-size: 0.8125rem;
+}
+
+.rep-contact-row a {
+  color: rgba(242, 242, 240, 0.78);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.rep-contact-row a:hover {
+  color: #fff;
+}
+
+.rep-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.rep-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(242, 242, 240, 0.85);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.rep-chip--trial {
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #93c5fd;
+}
+
+.rep-chip--paid {
+  border-color: rgba(52, 211, 153, 0.35);
+  color: #6ee7b7;
+}
+
+.rep-chip--follow {
+  border-color: rgba(251, 191, 36, 0.35);
+  color: #fcd34d;
+}
+
+.rep-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0 1.1rem 1rem;
+}
+
+.rep-section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(242, 242, 240, 0.9);
+  margin: 0.25rem 0 0.5rem;
+}
+
+.rep-empty-block {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: rgba(242, 242, 240, 0.55);
+}

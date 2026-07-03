@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import { PLANS, getPlan } from "@/lib/pricing";
 import { usePlatformBranding } from "@/hooks/use-branding";
 import { Check } from "lucide-react";
+import { captureAffiliateRefFromSearch } from "@/lib/affiliate-ref";
 
 function slugify(name: string) {
   return name
@@ -47,18 +48,25 @@ export default function SignupPage() {
   }, [search]);
 
   const planLabel = PLANS.find((p) => p.id === selectedPlan)?.name ?? "Essai gratuit";
+  const affiliateRef = useMemo(() => captureAffiliateRefFromSearch(search), [search]);
+
+const phoneSchema = z
+  .string()
+  .min(8, "Téléphone requis (min. 8 chiffres)")
+  .refine((v) => v.replace(/\D/g, "").length >= 8, "Min. 8 chiffres");
 
   const schema = z.object({
     businessName: z.string().min(2, "Nom requis (min. 2 caractères)"),
     fullName: z.string().min(2, "Nom requis"),
     email: z.string().email("Email invalide"),
+    phone: phoneSchema,
     password: z.string().min(8, "Mot de passe : 8 caractères minimum"),
     slug: z.string().optional(),
   });
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
-    defaultValues: { businessName: "", fullName: "", email: "", password: "", slug: "" },
+    defaultValues: { businessName: "", fullName: "", email: "", phone: "", password: "", slug: "" },
   });
 
   const businessName = form.watch("businessName");
@@ -75,9 +83,11 @@ export default function SignupPage() {
         businessName: values.businessName,
         fullName: values.fullName,
         email: values.email,
+        phone: values.phone.replace(/\D/g, ""),
         password: values.password,
         slug: values.slug || slugify(values.businessName),
         selectedPlan,
+        affiliateCode: affiliateRef ?? undefined,
       });
 
       const { data: authData, error } = await supabase.auth.signInWithPassword({
@@ -130,6 +140,16 @@ export default function SignupPage() {
           <div className="landing-form-card">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                {affiliateRef && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                    <p className="font-medium">
+                      Offre partenaire <strong>{affiliateRef}</strong>
+                    </p>
+                    <p className="mt-1 text-emerald-800/80">
+                      Tarifs réduits pendant 3 mois après abonnement.
+                    </p>
+                  </div>
+                )}
                 <FormField
                   control={form.control}
                   name="businessName"
@@ -169,6 +189,19 @@ export default function SignupPage() {
                       <FormLabel>Votre nom</FormLabel>
                       <FormControl>
                         <Input placeholder="Prénom Nom" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Téléphone</FormLabel>
+                      <FormControl>
+                        <Input type="tel" placeholder="05 55 12 34 56" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

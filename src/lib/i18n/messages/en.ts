@@ -280,6 +280,7 @@ export const messages: Messages = {
     businessPlaceholder: "e.g. Lilac Café",
     fullName: "Your name",
     fullNamePlaceholder: "First and last name",
+    phone: "Phone",
     publicUrl: "Public URL",
     publicUrlHint: "Customers will access your card via this address.",
     showPassword: "Show password",
@@ -320,6 +321,7 @@ export const messages: Messages = {
       nameRequired: "Name required (min. 2 characters)",
       nameMin: "Name required",
       slugReserved: "This URL name is reserved",
+      phoneMin: "Phone required (min. 8 digits)",
     },
     toast: {
       loginSuccess: "Signed in successfully",

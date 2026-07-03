@@ -12,6 +12,8 @@ import {
   Menu,
   Shield,
   Bell,
+  Briefcase,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 import BrandLogo from "@/components/brand/mascot";
@@ -24,6 +26,8 @@ const navItems: { label: string; path: string; icon: LucideIcon }[] = [
   { label: "Vue d'ensemble", path: "/", icon: LayoutDashboard },
   { label: "Alertes", path: "/alerts", icon: Bell },
   { label: "Commerces", path: "/businesses", icon: Building2 },
+  { label: "Commerciaux", path: "/sales-reps", icon: Briefcase },
+  { label: "Affiliés", path: "/affiliates", icon: Megaphone },
   { label: "Abonnements", path: "/subscriptions", icon: CreditCard },
   { label: "Paiements", path: "/payments", icon: Receipt },
   { label: "Analytics", path: "/analytics", icon: BarChart3 },

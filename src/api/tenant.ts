@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { invokeFunction, supabase } from "@/lib/supabase";
 import type { PlanId } from "@/lib/pricing";
 
@@ -205,20 +205,125 @@ export function useGetPlanUsage(options?: { enabled?: boolean }) {
   });
 }
 
+export interface TenantBillingDetails {
+  billingFullName: string | null;
+  billingPhone: string | null;
+  billingEmail: string | null;
+  billingAddress: string | null;
+}
+
+export function useGetTenantBillingDetails(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ["tenant-billing-details"],
+    enabled: options?.enabled ?? true,
+    queryFn: async (): Promise<TenantBillingDetails | null> => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("tenant_id, email")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.tenant_id) return null;
+
+      const { data: tenant, error } = await supabase
+        .from("tenants")
+        .select("billing_full_name, billing_phone, billing_email, billing_address")
+        .eq("id", profile.tenant_id)
+        .single();
+
+      if (error || !tenant) return null;
+
+      return {
+        billingFullName: tenant.billing_full_name,
+        billingPhone: tenant.billing_phone,
+        billingEmail: tenant.billing_email ?? profile.email,
+        billingAddress: tenant.billing_address,
+      };
+    },
+  });
+}
+
+export function useUpdateTenantBillingDetails() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      fullName: string;
+      phone: string;
+      email: string;
+      address?: string;
+    }) => {
+      const { data, error } = await supabase.rpc("update_tenant_billing_details", {
+        p_full_name: payload.fullName,
+        p_phone: payload.phone,
+        p_email: payload.email,
+        p_address: payload.address ?? null,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tenant-billing-details"] });
+      queryClient.invalidateQueries({ queryKey: getTenantQueryKey() });
+    },
+  });
+}
+
 export function useRegisterTenant() {
   return useMutation({
     mutationFn: async (payload: {
       businessName: string;
       fullName: string;
       email: string;
+      phone: string;
       password: string;
       slug: string;
       selectedPlan: string;
+      affiliateCode?: string;
     }) => {
       return invokeFunction<{ success: boolean; slug: string; tenantId: string }>(
         "register-tenant",
         payload,
       );
+    },
+  });
+}
+
+export interface AffiliatePricingResult {
+  eligible: boolean;
+  amountDzd: number;
+  listPriceDzd: number;
+  affiliateCode?: string | null;
+  benefitEndsAt?: string | null;
+  commissionPaymentsCount?: number;
+  reason?: string;
+}
+
+export function useAffiliatePricing(planId: PlanId, billingPeriod: "monthly" | "annual") {
+  return useQuery({
+    queryKey: ["affiliate-pricing", planId, billingPeriod],
+    queryFn: async (): Promise<AffiliatePricingResult | null> => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("tenant_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.tenant_id) return null;
+
+      const { data, error } = await supabase.rpc("resolve_tenant_affiliate_pricing", {
+        p_tenant_id: profile.tenant_id,
+        p_plan_id: planId,
+        p_billing_period: billingPeriod,
+      });
+
+      if (error) throw error;
+      return data as AffiliatePricingResult;
     },
   });
 }

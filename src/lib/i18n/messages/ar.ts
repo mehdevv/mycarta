@@ -280,6 +280,7 @@ export const messages: Messages = {
     businessPlaceholder: "مثال: مقهى الزهور",
     fullName: "اسمك",
     fullNamePlaceholder: "الاسم واللقب",
+    phone: "الهاتف",
     publicUrl: "الرابط العام",
     publicUrlHint: "سيصل عملاؤك إلى بطاقتك عبر هذا العنوان.",
     showPassword: "إظهار كلمة المرور",
@@ -320,6 +321,7 @@ export const messages: Messages = {
       nameRequired: "الاسم مطلوب (حرفان على الأقل)",
       nameMin: "الاسم مطلوب",
       slugReserved: "اسم الرابط هذا محجوز",
+      phoneMin: "الهاتف مطلوب (8 أرقام على الأقل)",
     },
     toast: {
       loginSuccess: "تم تسجيل الدخول بنجاح",

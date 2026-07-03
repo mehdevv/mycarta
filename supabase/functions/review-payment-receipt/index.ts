@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
         ends.setMonth(ends.getMonth() + 1);
       }
 
-      await admin.from("subscriptions").insert({
+      const { data: newSub } = await admin.from("subscriptions").insert({
         tenant_id: receipt.tenant_id,
         plan_id: receipt.plan_id,
         billing_period: receipt.billing_period,
@@ -91,7 +91,33 @@ Deno.serve(async (req) => {
         amount_dzd: receipt.amount_dzd,
         starts_at: now.toISOString(),
         ends_at: ends.toISOString(),
-      });
+      }).select("id").single();
+
+      if (newSub?.id) {
+        const { data: tenantRow } = await admin
+          .from("tenants")
+          .select("referred_affiliate_id")
+          .eq("id", receipt.tenant_id)
+          .single();
+
+        if (tenantRow?.referred_affiliate_id) {
+          await admin.rpc("start_tenant_affiliate_benefit", { p_tenant_id: receipt.tenant_id });
+          await admin.rpc("create_affiliate_commission_for_subscription", {
+            p_tenant_id: receipt.tenant_id,
+            p_subscription_id: newSub.id,
+            p_plan_id: receipt.plan_id,
+            p_amount_dzd: receipt.amount_dzd,
+            p_billing_period: receipt.billing_period,
+          });
+        } else {
+          await admin.rpc("create_sales_commission_for_subscription", {
+            p_tenant_id: receipt.tenant_id,
+            p_subscription_id: newSub.id,
+            p_plan_id: receipt.plan_id,
+            p_amount_dzd: receipt.amount_dzd,
+          });
+        }
+      }
 
       await admin
         .from("tenants")

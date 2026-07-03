@@ -281,6 +281,7 @@ export const messages = {
     businessPlaceholder: "Ex. Café des Lilas",
     fullName: "Votre nom",
     fullNamePlaceholder: "Prénom et nom",
+    phone: "Téléphone",
     publicUrl: "URL publique",
     publicUrlHint: "Vos clients accèderont à votre carte via cette adresse.",
     showPassword: "Afficher le mot de passe",
@@ -321,6 +322,7 @@ export const messages = {
       nameRequired: "Nom requis (min. 2 caractères)",
       nameMin: "Nom requis",
       slugReserved: "Ce nom d'URL est réservé",
+      phoneMin: "Téléphone requis (min. 8 chiffres)",
     },
     toast: {
       loginSuccess: "Connexion réussie",

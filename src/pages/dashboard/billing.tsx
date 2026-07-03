@@ -1,16 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
+  useAffiliatePricing,
   useCreateChargilyCheckout,
   useGetPlatformBankDetails,
   useGetPlanUsage,
+  useGetTenantBillingDetails,
   useGetTenantPaymentReceipts,
   useGetTenantSubscriptions,
   useGetTrialStatus,
   useSubmitPaymentReceipt,
+  useUpdateTenantBillingDetails,
   getTenantQueryKey,
 } from "@/api/tenant";
+import { useAuth } from "@/lib/auth";
 import { PLANS, ANNUAL_BILLING_NOTE, formatDzd, type PlanId } from "@/lib/pricing";
 import { PLATFORM } from "@/lib/platform";
 import { useCurrentTenant } from "@/lib/tenant-context";
@@ -29,12 +33,26 @@ import {
   Sparkles,
   Upload,
   ArrowUpRight,
+  User,
 } from "lucide-react";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { DashboardStatCard } from "@/components/dashboard/dashboard-stat-card";
 import { PlanLimitsCard } from "@/components/billing/plan-limits-card";
+import { Input } from "@/components/ui/input";
 import { staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+
+function hasBillingDetails(details: {
+  billingFullName: string | null;
+  billingPhone: string | null;
+  billingEmail: string | null;
+} | null | undefined) {
+  return Boolean(
+    details?.billingFullName?.trim() &&
+      details?.billingPhone?.trim() &&
+      details?.billingEmail?.trim(),
+  );
+}
 
 const statusLabels: Record<string, string> = {
   trialing: "Essai gratuit",
@@ -178,17 +196,41 @@ function scrollToPlans() {
 
 export default function BillingPage() {
   const { tenant } = useCurrentTenant();
+  const { user } = useAuth();
+  const { data: billingDetails, isLoading: billingLoading } = useGetTenantBillingDetails();
+  const updateBilling = useUpdateTenantBillingDetails();
   const { data: trialStatus, isLoading: trialLoading } = useGetTrialStatus();
   const { data: planUsage, isLoading: usageLoading } = useGetPlanUsage();
   const { data: bankDetails, isLoading: bankLoading } = useGetPlatformBankDetails();
   const { data: receipts, isLoading: receiptsLoading } = useGetTenantPaymentReceipts();
   const { data: subscriptions, isLoading: subsLoading } = useGetTenantSubscriptions();
-  const checkout = useCreateChargilyCheckout();
-  const submitReceipt = useSubmitPaymentReceipt();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">("monthly");
+  const checkout = useCreateChargilyCheckout();
+  const submitReceipt = useSubmitPaymentReceipt();
+  const boutiqueAffiliate = useAffiliatePricing("boutique", billingPeriod);
+  const maisonAffiliate = useAffiliatePricing("maison", billingPeriod);
   const [uploadingPlanId, setUploadingPlanId] = useState<PlanId | null>(null);
+  const [billingForm, setBillingForm] = useState({
+    fullName: "",
+    phone: "",
+    email: "",
+    address: "",
+  });
+
+  useEffect(() => {
+    if (billingDetails || user) {
+      setBillingForm({
+        fullName: billingDetails?.billingFullName ?? "",
+        phone: billingDetails?.billingPhone ?? "",
+        email: billingDetails?.billingEmail ?? user?.email ?? "",
+        address: billingDetails?.billingAddress ?? "",
+      });
+    }
+  }, [billingDetails, user]);
+
+  const billingComplete = hasBillingDetails(billingDetails);
 
   const currentPlanId = (trialStatus?.planId ?? tenant?.planId ?? "trial") as PlanId;
   const subscriptionStatus = trialStatus?.subscriptionStatus ?? tenant?.subscriptionStatus ?? "trialing";
@@ -213,7 +255,22 @@ export default function BillingPage() {
 
   const accessUntil = tenant?.subscriptionEndsAt ?? trialStatus?.subscriptionEndsAt ?? trialStatus?.trialEndsAt;
 
+  const affiliatePricingByPlan: Partial<Record<PlanId, typeof boutiqueAffiliate.data>> = {
+    boutique: boutiqueAffiliate.data ?? undefined,
+    maison: maisonAffiliate.data ?? undefined,
+  };
+
+  const activeAffiliateOffer = [boutiqueAffiliate.data, maisonAffiliate.data].find((p) => p?.eligible);
+
   const handleChargily = async (planId: PlanId) => {
+    if (!billingComplete) {
+      toast({
+        title: "Coordonnées requises",
+        description: "Enregistrez vos coordonnées de facturation avant de payer.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       const result = await checkout.mutateAsync({ planId, billingPeriod });
       if (result.checkoutUrl) window.location.href = result.checkoutUrl;
@@ -228,6 +285,14 @@ export default function BillingPage() {
 
   const handleReceiptUpload = async (planId: PlanId, file: File) => {
     if (!tenant) return;
+    if (!billingComplete) {
+      toast({
+        title: "Coordonnées requises",
+        description: "Enregistrez vos coordonnées de facturation avant d'envoyer un reçu.",
+        variant: "destructive",
+      });
+      return;
+    }
     setUploadingPlanId(planId);
     try {
       const path = `${tenant.id}/${Date.now()}-${file.name}`;
@@ -236,7 +301,13 @@ export default function BillingPage() {
 
       const { data: urlData } = supabase.storage.from("payment-receipts").getPublicUrl(path);
       const plan = PLANS.find((p) => p.id === planId);
-      const amount = billingPeriod === "annual" ? plan?.annualDzd ?? 0 : plan?.monthlyDzd ?? 0;
+      const affiliatePricing = affiliatePricingByPlan[planId];
+      const amount =
+        affiliatePricing?.eligible && affiliatePricing.amountDzd
+          ? affiliatePricing.amountDzd
+          : billingPeriod === "annual"
+            ? plan?.annualDzd ?? 0
+            : plan?.monthlyDzd ?? 0;
 
       await submitReceipt.mutateAsync({
         planId,
@@ -260,6 +331,24 @@ export default function BillingPage() {
       });
     } finally {
       setUploadingPlanId(null);
+    }
+  };
+
+  const handleSaveBilling = async () => {
+    try {
+      await updateBilling.mutateAsync({
+        fullName: billingForm.fullName.trim(),
+        phone: billingForm.phone.replace(/\D/g, ""),
+        email: billingForm.email.trim(),
+        address: billingForm.address.trim() || undefined,
+      });
+      toast({ title: "Coordonnées enregistrées", description: "Vous pouvez maintenant procéder au paiement." });
+    } catch (e) {
+      toast({
+        title: "Erreur",
+        description: e instanceof Error ? e.message : "Échec de l'enregistrement",
+        variant: "destructive",
+      });
     }
   };
 
@@ -388,6 +477,80 @@ export default function BillingPage() {
 
       <BillingSectionDivider />
 
+      <motion.article className="dash-card" variants={staggerItem}>
+        <div className="dash-card-header">
+          <h2 className="dash-card-title flex items-center gap-2">
+            <User size={18} className="text-[var(--dash-brand)]" />
+            Coordonnées de facturation
+          </h2>
+          <p className="dash-section-desc mt-1">
+            Requis avant tout paiement en ligne ou envoi de reçu.
+          </p>
+        </div>
+        <div className="dash-card-body space-y-4">
+          {billingLoading ? (
+            <div className="dash-skeleton h-32 w-full rounded-xl" />
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-1.5 block">
+                  <span className="text-sm font-medium text-[var(--dash-text-secondary)]">Nom complet</span>
+                  <Input
+                    value={billingForm.fullName}
+                    onChange={(e) => setBillingForm((f) => ({ ...f, fullName: e.target.value }))}
+                    placeholder="Prénom Nom"
+                  />
+                </label>
+                <label className="space-y-1.5 block">
+                  <span className="text-sm font-medium text-[var(--dash-text-secondary)]">Téléphone</span>
+                  <Input
+                    type="tel"
+                    value={billingForm.phone}
+                    onChange={(e) => setBillingForm((f) => ({ ...f, phone: e.target.value }))}
+                    placeholder="05 55 12 34 56"
+                  />
+                </label>
+                <label className="space-y-1.5 block">
+                  <span className="text-sm font-medium text-[var(--dash-text-secondary)]">Email</span>
+                  <Input
+                    type="email"
+                    value={billingForm.email}
+                    onChange={(e) => setBillingForm((f) => ({ ...f, email: e.target.value }))}
+                    placeholder="vous@exemple.com"
+                  />
+                </label>
+                <label className="space-y-1.5 block sm:col-span-2">
+                  <span className="text-sm font-medium text-[var(--dash-text-secondary)]">Adresse (optionnel)</span>
+                  <Input
+                    value={billingForm.address}
+                    onChange={(e) => setBillingForm((f) => ({ ...f, address: e.target.value }))}
+                    placeholder="Adresse de facturation"
+                  />
+                </label>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  className="dash-btn-primary !w-auto px-5"
+                  onClick={() => void handleSaveBilling()}
+                  disabled={updateBilling.isPending}
+                >
+                  {updateBilling.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Enregistrer
+                </button>
+                {billingComplete ? (
+                  <DashBadge variant="success">Prêt pour le paiement</DashBadge>
+                ) : (
+                  <DashBadge variant="warning">À compléter avant paiement</DashBadge>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </motion.article>
+
+      <BillingSectionDivider />
+
       <motion.section id="choose-plan" variants={staggerItem}>
         <div className="dash-section-head">
           <div>
@@ -403,7 +566,12 @@ export default function BillingPage() {
           {DISPLAY_PLANS.map((planId) => {
             const plan = PLANS.find((p) => p.id === planId)!;
             const isPrestige = planId === "prestige";
-            const price = billingPeriod === "annual" ? plan.annualDzd : plan.monthlyDzd;
+            const listPrice = billingPeriod === "annual" ? plan.annualDzd : plan.monthlyDzd;
+            const affiliatePricing = affiliatePricingByPlan[planId];
+            const price =
+              affiliatePricing?.eligible && affiliatePricing.amountDzd
+                ? affiliatePricing.amountDzd
+                : listPrice;
             const isCurrent = currentPlanId === planId && subscriptionStatus === "active";
             const featured = planId === "maison";
             const isUploading = uploadingPlanId === planId;
@@ -430,7 +598,14 @@ export default function BillingPage() {
                     {featured && !isCurrent && <DashBadge variant="brand">Top</DashBadge>}
                   </div>
                   <p className="dash-plan-price">
-                    {formatDzd(price)}
+                    {affiliatePricing?.eligible && listPrice != null && price !== listPrice ? (
+                      <>
+                        <span className="line-through opacity-50 text-lg mr-2">{formatDzd(listPrice)}</span>
+                        {formatDzd(price)}
+                      </>
+                    ) : (
+                      formatDzd(price)
+                    )}
                     {!isPrestige && price !== null && (
                       <span>{billingPeriod === "annual" ? "/an" : "/mois"}</span>
                     )}
@@ -454,7 +629,7 @@ export default function BillingPage() {
                         type="button"
                         className="dash-btn-primary"
                         onClick={() => void handleChargily(planId)}
-                        disabled={checkout.isPending || isCurrent}
+                        disabled={checkout.isPending || isCurrent || !billingComplete}
                       >
                         {checkout.isPending ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -473,7 +648,7 @@ export default function BillingPage() {
                             if (file) void handleReceiptUpload(planId, file);
                             e.target.value = "";
                           }}
-                          disabled={isUploading || isCurrent}
+                          disabled={isUploading || isCurrent || !billingComplete}
                         />
                         <span className="dash-btn-secondary">
                           {isUploading ? (

@@ -28,6 +28,7 @@ import PlatformPaymentsPage from "@/pages/platform/payments";
 import PlatformAnalyticsPage from "@/pages/platform/analytics";
 import PlatformAlertsPage from "@/pages/platform/alerts";
 import PlatformSettingsPage from "@/pages/platform/settings";
+import PlatformSalesRepsPage from "@/pages/platform/sales-reps";
 import PlatformAccessDenied from "@/pages/platform/access-denied";
 import LegalPage from "@/pages/public/legal-page";
 import Setup from "@/pages/public/setup";
@@ -64,6 +65,17 @@ import WorkerScan from "@/pages/worker/scan";
 import WorkerHistory from "@/pages/worker/history";
 import WorkerMyQr from "@/pages/worker/my-qr";
 
+import RepLayout from "@/components/layout/rep-layout";
+import RepPipelinePage from "@/pages/rep/pipeline";
+import RepTenantDetailPage from "@/pages/rep/tenant-detail";
+import RepCommissionsPage from "@/pages/rep/commissions";
+
+import AffiliateLayout from "@/components/layout/affiliate-layout";
+import AffiliateDashboardPage from "@/pages/affiliate/index";
+import AffiliateReferralsPage from "@/pages/affiliate/referrals";
+import AffiliateCommissionsPage from "@/pages/affiliate/commissions";
+import PlatformAffiliatesPage from "@/pages/platform/affiliates";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -92,7 +104,7 @@ function ProtectedRoute({
   loadingFallback,
 }: {
   component: React.ComponentType;
-  role: "owner" | "worker" | "super_admin";
+  role: "owner" | "worker" | "super_admin" | "sales_rep" | "affiliate";
   loginPath: string;
   loadingFallback?: React.ReactNode;
 }) {
@@ -105,11 +117,73 @@ function ProtectedRoute({
   if (!user) return <Redirect to={`~${loginPath}`} />;
   if (user.role !== role) {
     if (user.role === "super_admin") return <Redirect to="~/platform" />;
+    if (user.role === "sales_rep") return <Redirect to="~/rep" />;
+    if (user.role === "affiliate") return <Redirect to="~/affiliate" />;
     if (user.role === "owner") return <Redirect to="~/dashboard" />;
     return <Redirect to="~/worker" />;
   }
 
   return <Component />;
+}
+
+function RepPortalGate({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  const { t } = useLocale();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-950">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 rounded-full border-4 border-white/30 border-t-white animate-spin" />
+          <p className="text-sm text-slate-400">{t("common.loading")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return <Redirect to="~/shop" />;
+  if (user.role !== "sales_rep") {
+    if (user.role === "super_admin") return <Redirect to="~/platform" />;
+    if (user.role === "affiliate") return <Redirect to="~/affiliate" />;
+    if (user.role === "owner") return <Redirect to="~/dashboard" />;
+    return <Redirect to="~/worker" />;
+  }
+
+  return (
+    <RepLayout>
+      <PageTransition>{children}</PageTransition>
+    </RepLayout>
+  );
+}
+
+function AffiliatePortalGate({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  const { t } = useLocale();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-950">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 rounded-full border-4 border-white/30 border-t-white animate-spin" />
+          <p className="text-sm text-slate-400">{t("common.loading")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return <Redirect to="~/shop" />;
+  if (user.role !== "affiliate") {
+    if (user.role === "super_admin") return <Redirect to="~/platform" />;
+    if (user.role === "sales_rep") return <Redirect to="~/rep" />;
+    if (user.role === "owner") return <Redirect to="~/dashboard" />;
+    return <Redirect to="~/worker" />;
+  }
+
+  return (
+    <AffiliateLayout>
+      <PageTransition>{children}</PageTransition>
+    </AffiliateLayout>
+  );
 }
 
 function PlatformProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -203,6 +277,12 @@ function Router() {
           </Route>
           <Route path="/alerts">
             <PlatformProtectedRoute component={PlatformAlertsPage} />
+          </Route>
+          <Route path="/sales-reps">
+            <PlatformProtectedRoute component={PlatformSalesRepsPage} />
+          </Route>
+          <Route path="/affiliates">
+            <PlatformProtectedRoute component={PlatformAffiliatesPage} />
           </Route>
           <Route path="/settings">
             <PlatformProtectedRoute component={PlatformSettingsPage} />
@@ -302,6 +382,26 @@ function Router() {
           </PageTransition>
         </DashboardLayout>
         </OwnerActivationGate>
+      </Route>
+
+      <Route path="/rep" nest>
+        <RepPortalGate>
+          <Switch>
+            <Route path="/tenant/:id" component={RepTenantDetailPage} />
+            <Route path="/commissions" component={RepCommissionsPage} />
+            <Route path="/" component={RepPipelinePage} />
+          </Switch>
+        </RepPortalGate>
+      </Route>
+
+      <Route path="/affiliate" nest>
+        <AffiliatePortalGate>
+          <Switch>
+            <Route path="/referrals" component={AffiliateReferralsPage} />
+            <Route path="/commissions" component={AffiliateCommissionsPage} />
+            <Route path="/" component={AffiliateDashboardPage} />
+          </Switch>
+        </AffiliatePortalGate>
       </Route>
 
       <Route path="/worker" nest>

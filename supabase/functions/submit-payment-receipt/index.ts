@@ -51,6 +51,35 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    const { data: pricing } = await admin.rpc("resolve_tenant_affiliate_pricing", {
+      p_tenant_id: profile.tenant_id,
+      p_plan_id: planId,
+      p_billing_period: billingPeriod,
+    });
+
+    const { data: plan } = await admin.from("plans").select("*").eq("id", planId).single();
+    const expectedAmount = pricing?.eligible
+      ? pricing.amountDzd
+      : billingPeriod === "annual"
+        ? plan?.price_annual_dzd
+        : plan?.price_monthly_dzd;
+
+    if (!expectedAmount || Number(amountDzd) !== expectedAmount) {
+      return jsonResponse({ error: "Montant incorrect pour ce plan" }, 400);
+    }
+
+    const { data: tenant } = await admin
+      .from("tenants")
+      .select("billing_full_name, billing_phone, billing_email")
+      .eq("id", profile.tenant_id)
+      .single();
+
+    if (!tenant?.billing_full_name || !tenant?.billing_phone || !tenant?.billing_email) {
+      return jsonResponse({
+        error: "Complétez vos coordonnées de facturation avant d'envoyer un reçu",
+      }, 400);
+    }
+
     const { data, error } = await admin
       .from("payment_receipts")
       .insert({

@@ -25,8 +25,8 @@ function slugify(name: string) {
 }
 
 const RESERVED_SLUGS = new Set([
-  "admin", "api", "app", "card", "client", "dashboard", "employee", "emloyee",
-  "enrol", "login", "platform", "reward", "rewards", "setup", "shop", "signup",
+  "admin", "affiliate", "api", "app", "card", "client", "dashboard", "employee", "emloyee",
+  "affiliate", "enrol", "login", "platform", "rep", "reward", "rewards", "setup", "shop", "signup",
   "tarifs", "worker", "www",
 ]);
 
@@ -45,10 +45,15 @@ Deno.serve(async (req) => {
   );
 
   try {
-    const { businessName, fullName, email, password, slug: rawSlug } = await req.json();
+    const { businessName, fullName, email, password, slug: rawSlug, phone, affiliateCode } = await req.json();
 
-    if (!businessName || !fullName || !email || !password) {
-      return jsonResponse({ error: "businessName, fullName, email, and password are required" }, 400);
+    if (!businessName || !fullName || !email || !password || !phone) {
+      return jsonResponse({ error: "businessName, fullName, email, phone, and password are required" }, 400);
+    }
+
+    const normalizedPhone = String(phone).replace(/\D/g, "");
+    if (normalizedPhone.length < 8) {
+      return jsonResponse({ error: "Phone must be at least 8 digits" }, 400);
     }
 
     if (password.length < 8) {
@@ -67,6 +72,20 @@ Deno.serve(async (req) => {
       slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
     }
 
+    let referredAffiliateId: string | null = null;
+    let affiliateCodeUsed: string | null = null;
+
+    if (affiliateCode && String(affiliateCode).trim()) {
+      const { data: affiliateInfo } = await admin.rpc("get_affiliate_by_code", {
+        p_code: String(affiliateCode).trim(),
+      });
+      if (!affiliateInfo?.id) {
+        return jsonResponse({ error: "Code partenaire invalide ou expiré" }, 400);
+      }
+      referredAffiliateId = affiliateInfo.id;
+      affiliateCodeUsed = affiliateInfo.affiliateCode ?? String(affiliateCode).trim().toUpperCase();
+    }
+
     const trialEnds = new Date();
     trialEnds.setDate(trialEnds.getDate() + 14);
 
@@ -78,6 +97,9 @@ Deno.serve(async (req) => {
         plan_id: "trial",
         trial_ends_at: trialEnds.toISOString(),
         subscription_status: "trialing",
+        owner_phone: normalizedPhone,
+        referred_affiliate_id: referredAffiliateId,
+        affiliate_code_used: affiliateCodeUsed,
       })
       .select("id, slug")
       .single();
@@ -110,6 +132,7 @@ Deno.serve(async (req) => {
       tenant_id: tenant.id,
       full_name: fullName.trim(),
       email: email.trim(),
+      phone: normalizedPhone,
       role: "owner",
     });
 

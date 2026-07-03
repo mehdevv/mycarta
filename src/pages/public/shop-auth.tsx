@@ -25,6 +25,7 @@ import { usePlatformBranding } from "@/hooks/use-branding";
 import { useLocale } from "@/lib/i18n/locale-context";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { isReservedSlug } from "@/lib/reserved-slugs";
+import { captureAffiliateRefFromSearch } from "@/lib/affiliate-ref";
 import { cn } from "@/lib/utils";
 
 function slugify(name: string) {
@@ -49,6 +50,10 @@ const signupSchema = (t: (key: string) => string) =>
       businessName: z.string().min(2, t("auth.validation.nameRequired")),
       fullName: z.string().min(2, t("auth.validation.nameMin")),
       email: z.string().email(t("auth.validation.emailInvalid")),
+      phone: z
+        .string()
+        .min(8, t("auth.validation.phoneMin"))
+        .refine((v) => v.replace(/\D/g, "").length >= 8, t("auth.validation.phoneMin")),
       password: z.string().min(8, t("auth.validation.passwordMin")),
       slug: z.string().optional(),
     })
@@ -200,6 +205,8 @@ export default function ShopAuthPage() {
     return params.get("plan") ?? "trial";
   }, [search]);
 
+  const affiliateRef = useMemo(() => captureAffiliateRefFromSearch(search), [search]);
+
   const planLabel = PLANS.find((p) => p.id === selectedPlan)?.name ?? t("plans.trial");
   const isTrial = selectedPlan === "trial";
 
@@ -238,6 +245,14 @@ export default function ShopAuthPage() {
       setLocation("~/platform");
       return;
     }
+    if (user.role === "sales_rep") {
+      setLocation("~/rep");
+      return;
+    }
+    if (user.role === "affiliate") {
+      setLocation("~/affiliate");
+      return;
+    }
     if (user.role === "owner") {
       setLocation("~/dashboard");
       return;
@@ -257,7 +272,7 @@ export default function ShopAuthPage() {
 
   const signupForm = useForm<z.infer<ReturnType<typeof signupSchema>>>({
     resolver: zodResolver(signupSchema(t)),
-    defaultValues: { businessName: "", fullName: "", email: "", password: "", slug: "" },
+    defaultValues: { businessName: "", fullName: "", email: "", phone: "", password: "", slug: "" },
   });
 
   const businessName = signupForm.watch("businessName");
@@ -287,9 +302,11 @@ export default function ShopAuthPage() {
         businessName: values.businessName,
         fullName: values.fullName,
         email: values.email,
+        phone: values.phone.replace(/\D/g, ""),
         password: values.password,
         slug: values.slug || slugify(values.businessName),
         selectedPlan,
+        affiliateCode: affiliateRef ?? undefined,
       });
 
       const { data: authData, error } = await supabase.auth.signInWithPassword({
@@ -469,6 +486,16 @@ export default function ShopAuthPage() {
               ) : (
                 <Form {...signupForm}>
                   <form onSubmit={signupForm.handleSubmit(onSignup)} className="space-y-4">
+                    {affiliateRef && (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                        <p className="font-medium">
+                          Offre partenaire <strong>{affiliateRef}</strong>
+                        </p>
+                        <p className="mt-1 text-emerald-800/80">
+                          Tarifs réduits pendant 3 mois après abonnement.
+                        </p>
+                      </div>
+                    )}
                     <FormField
                       control={signupForm.control}
                       name="businessName"
@@ -582,6 +609,29 @@ export default function ShopAuthPage() {
                         )}
                       />
                     </div>
+
+                    <FormField
+                      control={signupForm.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem className="shop-auth-field">
+                          <label htmlFor="signup-phone">{t("auth.phone")}</label>
+                          <FormControl>
+                            <TextInput
+                              id="signup-phone"
+                              name={field.name}
+                              type="tel"
+                              value={field.value}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              autoComplete="tel"
+                              placeholder="05 55 12 34 56"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <FormField
                       control={signupForm.control}
