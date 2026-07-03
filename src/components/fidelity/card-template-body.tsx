@@ -10,6 +10,7 @@ import {
 import type { StampMilestone } from "@/lib/stamp-milestones";
 import type { RewardMode } from "@/lib/spend-rewards";
 import { formatDzd } from "@/lib/pricing";
+import { readableAccentColor } from "@/lib/card-color-contrast";
 import CartaCardWatermark from "@/components/fidelity/carta-card-watermark";
 import { cn } from "@/lib/utils";
 
@@ -180,6 +181,7 @@ export default function CardTemplateBody({
   const size = qrSize ?? (compact ? 148 : 188);
   const tplClass = cardTemplateClassName(template);
   const spendBarProgress = spendProgress ?? progress;
+  const accentColor = readableAccentColor(primaryColor, cardDesignId);
 
   const bgStyle = cardBg
     ? { backgroundImage: `url(${cardBg})`, opacity: 0.75 }
@@ -192,7 +194,7 @@ export default function CardTemplateBody({
     <>
       <div className="card-tpl-progress-head">
         <span className="card-tpl-progress-label">{progressLabel}</span>
-        <span className="card-tpl-progress-count" style={{ color: primaryColor }}>
+        <span className="card-tpl-progress-count" style={{ color: accentColor }}>
           {`${currentStamps}/${stampThreshold}`}
         </span>
       </div>
@@ -210,7 +212,7 @@ export default function CardTemplateBody({
     <>
       <div className="card-tpl-progress-head">
         <span className="card-tpl-progress-label">{spendProgressLabel}</span>
-        <span className="card-tpl-progress-count" style={{ color: primaryColor }}>
+        <span className="card-tpl-progress-count" style={{ color: accentColor }}>
           {`${formatDzd(currentCycleSpendDzd)} / ${formatDzd(spendThresholdDzd)}`}
         </span>
       </div>

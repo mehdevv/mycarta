@@ -30,6 +30,11 @@ import { PLATFORM } from "@/lib/platform";
 import { tenantClientLink, tenantEmployeeLink } from "@/lib/links";
 import { uploadTenantAsset } from "@/lib/upload-tenant-asset";
 import { extractBrandColorsFromImage, extractSecondaryColor } from "@/lib/extract-brand-colors";
+import {
+  enforceCardColorPair,
+  validateCardPrimaryColor,
+  validateCardSecondaryColor,
+} from "@/lib/card-color-contrast";
 import { getBrandingLimits } from "@/lib/branding-limits";
 import { downloadQrCanvas, getQrLogoSettings } from "@/lib/branded-qr";
 import type { PlanId } from "@/lib/pricing";
@@ -128,8 +133,32 @@ export default function OnboardingPage() {
 
   const saveBrandingStep = async (useDefaults = false) => {
     if (!settings || !tenant) return;
+
+    if (!useDefaults) {
+      const primaryError = validateCardPrimaryColor(
+        primaryColor,
+        secondaryColor,
+        settings.cardDesignId,
+      );
+      const secondaryError = primaryError
+        ? null
+        : validateCardSecondaryColor(primaryColor, secondaryColor, settings.cardDesignId);
+      if (primaryError || secondaryError) {
+        toast({
+          title: "Couleurs illisibles",
+          description: primaryError ?? secondaryError ?? "",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
+      const colors = useDefaults
+        ? { primary: DEFAULT_PRIMARY, secondary: DEFAULT_SECONDARY }
+        : enforceCardColorPair(primaryColor, secondaryColor, settings.cardDesignId);
+
       await updateSettings.mutateAsync({
         id: settings.id,
         data: useDefaults
@@ -141,8 +170,8 @@ export default function OnboardingPage() {
             }
           : {
               logoUrl: logoUrl ?? settings.logoUrl,
-              primaryColor,
-              secondaryColor,
+              primaryColor: colors.primary,
+              secondaryColor: colors.secondary,
               ...(canBanner ? { cardTemplateUrl: cardBgUrl ?? settings.cardTemplateUrl } : {}),
             },
       });
@@ -357,7 +386,18 @@ export default function OnboardingPage() {
                           <input
                             type="color"
                             value={primaryColor}
-                            onChange={(e) => setPrimaryColor(e.target.value)}
+                            onChange={(e) => {
+                              const error = validateCardPrimaryColor(
+                                e.target.value,
+                                secondaryColor,
+                                settings?.cardDesignId,
+                              );
+                              if (error) {
+                                toast({ title: "Couleur illisible", description: error, variant: "destructive" });
+                                return;
+                              }
+                              setPrimaryColor(e.target.value);
+                            }}
                             className="mt-1 h-11 w-full cursor-pointer rounded-xl border border-[var(--dash-border)]"
                           />
                         </div>
@@ -366,7 +406,18 @@ export default function OnboardingPage() {
                           <input
                             type="color"
                             value={secondaryColor}
-                            onChange={(e) => setSecondaryColor(e.target.value)}
+                            onChange={(e) => {
+                              const error = validateCardSecondaryColor(
+                                primaryColor,
+                                e.target.value,
+                                settings?.cardDesignId,
+                              );
+                              if (error) {
+                                toast({ title: "Couleur illisible", description: error, variant: "destructive" });
+                                return;
+                              }
+                              setSecondaryColor(e.target.value);
+                            }}
                             className="mt-1 h-11 w-full cursor-pointer rounded-xl border border-[var(--dash-border)]"
                           />
                         </div>

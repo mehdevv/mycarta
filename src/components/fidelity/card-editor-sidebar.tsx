@@ -11,6 +11,10 @@ import { uploadTenantAsset } from "@/lib/upload-tenant-asset";
 import { extractBrandColorsFromImage } from "@/lib/extract-brand-colors";
 import { getBrandingLimits } from "@/lib/branding-limits";
 import { cardEditorToShopSettings } from "@/lib/card-editor-payload";
+import {
+  validateCardPrimaryColor,
+  validateCardSecondaryColor,
+} from "@/lib/card-color-contrast";
 import { PLATFORM } from "@/lib/platform";
 import { tenantClientLink } from "@/lib/links";
 import StampMilestonesEditor from "@/components/fidelity/stamp-milestones-editor";
@@ -128,6 +132,24 @@ export default function CardEditorSidebar({
   const clientPortalUrl = tenant?.slug ? tenantClientLink(tenant.slug) : null;
 
   const patch = (partial: Partial<CardEditorState>) => onChange({ ...state, ...partial });
+
+  const setPrimaryColor = (value: string) => {
+    const error = validateCardPrimaryColor(value, state.secondaryColor, state.cardDesignId);
+    if (error) {
+      toast({ title: "Couleur illisible", description: error, variant: "destructive" });
+      return;
+    }
+    patch({ primaryColor: value });
+  };
+
+  const setSecondaryColor = (value: string) => {
+    const error = validateCardSecondaryColor(state.primaryColor, value, state.cardDesignId);
+    if (error) {
+      toast({ title: "Couleur illisible", description: error, variant: "destructive" });
+      return;
+    }
+    patch({ secondaryColor: value });
+  };
 
   const persistToDb = async (
     nextState: CardEditorState = state,
@@ -335,6 +357,26 @@ export default function CardEditorSidebar({
             limits={limits}
             onChange={(cardDesignId) => {
               const next = { ...state, cardDesignId };
+              const primaryError = validateCardPrimaryColor(
+                next.primaryColor,
+                next.secondaryColor,
+                cardDesignId,
+              );
+              const secondaryError = primaryError
+                ? null
+                : validateCardSecondaryColor(
+                    next.primaryColor,
+                    next.secondaryColor,
+                    cardDesignId,
+                  );
+              if (primaryError || secondaryError) {
+                toast({
+                  title: "Couleurs incompatibles avec ce modèle",
+                  description: primaryError ?? secondaryError ?? "",
+                  variant: "destructive",
+                });
+                return;
+              }
               onChange(next);
               void persistToDb(next, { silent: true });
             }}
@@ -486,8 +528,11 @@ export default function CardEditorSidebar({
                   type="color"
                   className="mt-1 h-10 w-full cursor-pointer rounded-lg border border-[var(--dash-border)]"
                   value={state.primaryColor}
-                  onChange={(e) => patch({ primaryColor: e.target.value })}
+                  onChange={(e) => setPrimaryColor(e.target.value)}
                 />
+                <p className="mt-1 text-xs text-[var(--dash-text-secondary)]">
+                  Doit rester lisible sur le fond de la carte.
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium">Couleur secondaire</label>
@@ -495,7 +540,7 @@ export default function CardEditorSidebar({
                   type="color"
                   className="mt-1 h-10 w-full cursor-pointer rounded-lg border border-[var(--dash-border)]"
                   value={state.secondaryColor}
-                  onChange={(e) => patch({ secondaryColor: e.target.value })}
+                  onChange={(e) => setSecondaryColor(e.target.value)}
                 />
               </div>
             </div>

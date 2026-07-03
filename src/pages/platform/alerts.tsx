@@ -65,12 +65,12 @@ export default function PlatformAlertsPage() {
                       </div>
                       <div className="plat-toolbar">
                         {item.type === "receipt_pending" && item.receiptId && (
-                          <Link href="/platform/payments">
+                          <Link href="/payments">
                             <PlatformButton variant="secondary" size="sm">Valider</PlatformButton>
                           </Link>
                         )}
                         {item.tenantId && (
-                          <Link href={`/platform/businesses/${item.tenantId}`}>
+                          <Link href={`/businesses/${item.tenantId}`}>
                             <PlatformButton size="sm">Voir commerce</PlatformButton>
                           </Link>
                         )}

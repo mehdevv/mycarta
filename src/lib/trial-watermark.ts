@@ -1,8 +1,7 @@
-/** Free-trial shops show a Carta watermark on client loyalty cards. */
+/** Carta watermark on client loyalty cards (disabled). */
 export function shouldShowCartaWatermark(
-  showCartaWatermark?: boolean | null,
-  planId?: string | null,
+  _showCartaWatermark?: boolean | null,
+  _planId?: string | null,
 ): boolean {
-  if (showCartaWatermark != null) return Boolean(showCartaWatermark);
-  return planId === "trial";
+  return false;
 }

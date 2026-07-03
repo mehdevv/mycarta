@@ -72,7 +72,7 @@ export default function PlatformOverviewPage() {
         action={
           <div className="plat-toolbar">
             {alertCount > 0 && (
-              <Link href="/platform/alerts">
+              <Link href="/alerts">
                 <PlatformButton variant="secondary" className="gap-2">
                   <AlertTriangle className="h-4 w-4" />
                   {alertCount} alerte(s)
@@ -80,7 +80,7 @@ export default function PlatformOverviewPage() {
               </Link>
             )}
             {overview && overview.pendingReceipts > 0 && (
-              <Link href="/platform/payments">
+              <Link href="/payments">
                 <PlatformButton variant="warning" className="gap-2">
                   <Receipt className="h-4 w-4" />
                   {overview.pendingReceipts} reçu(s)
@@ -218,7 +218,7 @@ export default function PlatformOverviewPage() {
         <PlatformCardHeader
           title="Commerces récents"
           action={
-            <Link href="/platform/businesses">
+            <Link href="/businesses">
               <PlatformButton variant="secondary" size="sm">Voir tout</PlatformButton>
             </Link>
           }
@@ -243,7 +243,7 @@ export default function PlatformOverviewPage() {
                   {recentTenants.map((t) => (
                     <tr key={t.id}>
                       <td>
-                        <Link href={`/platform/businesses/${t.id}`} className="plat-link plat-cell-primary">{t.name}</Link>
+                        <Link href={`/businesses/${t.id}`} className="plat-link plat-cell-primary">{t.name}</Link>
                         <p className="plat-cell-mono plat-cell-muted">{t.slug}</p>
                       </td>
                       <td>{t.planName}</td>

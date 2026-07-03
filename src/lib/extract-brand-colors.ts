@@ -1,7 +1,8 @@
+import { enforceCardColorPair } from "@/lib/card-color-contrast";
+
 function rgbToHex(r: number, g: number, b: number): string {
   return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
 }
-
 function colorDistance(a: [number, number, number], b: [number, number, number]): number {
   return Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2);
 }
@@ -111,10 +112,10 @@ export async function extractBrandColorsFromImage(
   const primaryRgb = clusterDominant(pixels);
   const secondaryRgb = findSecondary(pixels, primaryRgb);
 
-  return {
-    primary: rgbToHex(...primaryRgb),
-    secondary: rgbToHex(...secondaryRgb),
-  };
+  return enforceCardColorPair(
+    rgbToHex(...primaryRgb),
+    rgbToHex(...secondaryRgb),
+  );
 }
 
 export async function extractPrimaryColor(file: File): Promise<string> {

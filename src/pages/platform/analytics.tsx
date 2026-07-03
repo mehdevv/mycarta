@@ -184,7 +184,7 @@ export default function PlatformAnalyticsPage() {
                   {(analytics?.healthScores ?? []).slice(0, 25).map((h) => (
                     <tr key={h.tenantId}>
                       <td>
-                        <Link href={`/platform/businesses/${h.tenantId}`} className="plat-link plat-cell-primary">{h.name}</Link>
+                        <Link href={`/businesses/${h.tenantId}`} className="plat-link plat-cell-primary">{h.name}</Link>
                       </td>
                       <td className="text-right">{h.clientCount}</td>
                       <td className="text-right">{h.scanCount30d}</td>

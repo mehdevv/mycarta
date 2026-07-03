@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { PlanId } from "@/lib/pricing";
 import { invokeFunction } from "@/lib/supabase";
@@ -108,7 +108,53 @@ export interface PlatformTenantRow {
   lastEnrolmentAt?: string | null;
   ownerEmail: string | null;
   ownerName: string | null;
+  ownerProfilePhone?: string | null;
+  ownerPhone?: string | null;
+  billingFullName?: string | null;
+  billingPhone?: string | null;
+  billingEmail?: string | null;
+  assignedRepName?: string | null;
+  affiliateName?: string | null;
+  affiliateCodeUsed?: string | null;
+  updatedAt?: string;
   planMonthlyDzd?: number | null;
+}
+
+export interface PlatformTenantClientRow {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  email: string | null;
+  cardCode: string;
+  cardUrl: string | null;
+  totalStamps: number;
+  currentCycleStamps: number;
+  totalRewardsEarned: number;
+  currentCycleSpendDzd?: number;
+  totalSpendDzd?: number;
+  isBlocked: boolean;
+  notes: string | null;
+  enrolledAt: string;
+  lastScanAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlatformTenantScanRow {
+  id: string;
+  clientName: string | null;
+  clientCardCode: string | null;
+  workerName: string | null;
+  scanType: string;
+  status: string;
+  blockReason: string | null;
+  stampsAdded: number;
+  spendAddedDzd?: number;
+  purchaseAmountDzd: number | null;
+  rewardTriggered: boolean;
+  reviewNotes: string | null;
+  scannedAt: string;
+  createdAt: string;
 }
 
 export interface PlatformWorkerRow {
@@ -120,6 +166,44 @@ export interface PlatformWorkerRow {
 }
 
 export interface PlatformTenantDetail extends PlatformTenantRow {
+  logoUrl?: string | null;
+  updatedAt?: string;
+  chargilyCustomerId?: string | null;
+  planAnnualDzd?: number | null;
+  planCampaignLimit?: number | null;
+  planLocationLimit?: number | null;
+  ownerPhone?: string | null;
+  billing?: {
+    fullName: string | null;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+  } | null;
+  salesRep?: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone: string | null;
+  } | null;
+  salesFollowUp?: {
+    status: string;
+    priority: string;
+    notes: string | null;
+    nextFollowUpAt: string | null;
+    lastContactAt: string | null;
+    upsellPlanId: string | null;
+  } | null;
+  affiliate?: {
+    id: string;
+    fullName: string;
+    affiliateCode: string;
+    socialHandle: string | null;
+  } | null;
+  affiliateCodeUsed?: string | null;
+  affiliateFirstPaidAt?: string | null;
+  affiliateBenefitEndsAt?: string | null;
+  affiliateCommissionPaymentsCount?: number;
+  totalRevenueApprovedDzd?: number;
   planMonthlyDzd?: number | null;
   planClientLimit?: number | null;
   planWorkerLimit?: number | null;
@@ -136,23 +220,73 @@ export interface PlatformTenantDetail extends PlatformTenantRow {
   lastScanAt?: string | null;
   lastEnrolmentAt?: string | null;
   brandColor?: string;
-  owner: { id: string; fullName: string; email: string; isActive?: boolean } | null;
-  workers?: PlatformWorkerRow[];
+  owner: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone?: string | null;
+    isActive?: boolean;
+    createdAt?: string;
+  } | null;
+  workers?: (PlatformWorkerRow & { phone?: string | null; createdAt?: string })[];
   recentScans: {
     id: string;
     clientName: string | null;
     workerName?: string | null;
     status: string;
+    blockReason?: string | null;
     stampsAdded: number;
+    purchaseAmountDzd?: number | null;
     rewardTriggered?: boolean;
+    scannedAt: string;
+  }[];
+  fraudScans?: {
+    id: string;
+    clientName: string | null;
+    workerName?: string | null;
+    status: string;
+    blockReason?: string | null;
     scannedAt: string;
   }[];
   recentClients?: {
     id: string;
     fullName: string;
+    phone?: string | null;
+    email?: string | null;
     cardCode: string;
     totalStamps: number;
+    currentCycleStamps?: number;
+    totalRewardsEarned?: number;
+    isBlocked?: boolean;
     enrolledAt: string;
+    lastScanAt?: string | null;
+  }[];
+  products?: {
+    id: string;
+    name: string;
+    sku: string | null;
+    category: string | null;
+    price: number;
+    isActive: boolean;
+    createdAt: string;
+  }[];
+  recentRewards?: {
+    id: string;
+    clientName: string;
+    rewardDescription: string;
+    redeemedAt: string | null;
+    createdAt: string;
+  }[];
+  campaigns?: {
+    id: string;
+    name: string;
+    channel: string;
+    status: string;
+    totalRecipients: number | null;
+    totalSent: number | null;
+    scheduledAt: string | null;
+    sentAt: string | null;
+    createdAt: string;
   }[];
   subscriptions: {
     id: string;
@@ -162,25 +296,66 @@ export interface PlatformTenantDetail extends PlatformTenantRow {
     amountDzd: number;
     startsAt: string | null;
     endsAt: string | null;
+    chargilyCheckoutId?: string | null;
     chargilyPaymentId?: string | null;
     createdAt: string;
   }[];
   receipts: {
     id: string;
     planId: string;
+    billingPeriod?: string;
     amountDzd: number;
     paymentMethod?: string;
+    receiptUrl?: string;
+    status: string;
+    reviewerNotes?: string | null;
+    reviewedAt?: string | null;
+    createdAt: string;
+  }[];
+  salesCommissions?: {
+    id: string;
+    repName: string;
+    planId: string;
+    amountDzd: number;
+    commissionDzd: number;
+    commissionRate: number;
+    status: string;
+    createdAt: string;
+  }[];
+  affiliateCommissions?: {
+    id: string;
+    affiliateName: string;
+    affiliateCode: string;
+    planId: string;
+    amountDzd: number;
+    commissionDzd: number;
+    commissionRate: number;
+    paymentPeriod: number;
     status: string;
     createdAt: string;
   }[];
   shopSettings?: {
+    businessName?: string;
     currency: string;
     timezone: string;
     clientLanguage: string;
     stampThreshold: number;
     maxScansPerDay: number;
+    rewardType?: string;
+    rewardValue?: string | null;
+    rewardMode?: string;
+    stampsEnabled?: boolean;
+    spendEnabled?: boolean;
+    spendThresholdDzd?: number;
+    collectClientEmail?: boolean;
+    trackProducts?: boolean;
+    cardDesignId?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
     whatsappConfigured: boolean;
     emailConfigured: boolean;
+    createdAt?: string;
+    updatedAt?: string;
   } | null;
 }
 
@@ -306,6 +481,8 @@ export const platformQueryKeys = {
   overview: ["platform-overview"] as const,
   tenants: ["platform-tenants"] as const,
   tenant: (id: string) => ["platform-tenant", id] as const,
+  tenantClients: (id: string) => ["platform-tenant-clients", id] as const,
+  tenantScans: (id: string) => ["platform-tenant-scans", id] as const,
   analytics: ["platform-analytics"] as const,
   alerts: ["platform-alerts"] as const,
   audit: ["platform-audit"] as const,
@@ -356,6 +533,50 @@ export function usePlatformTenantDetail(tenantId?: string) {
       });
       if (error) throw error;
       return data as PlatformTenantDetail | null;
+    },
+  });
+}
+
+const PAGE_SIZE = 200;
+
+export function usePlatformTenantClients(tenantId?: string) {
+  return useInfiniteQuery({
+    queryKey: platformQueryKeys.tenantClients(tenantId ?? ""),
+    enabled: !!tenantId,
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await supabase.rpc("get_platform_tenant_clients", {
+        p_tenant_id: tenantId,
+        p_limit: PAGE_SIZE,
+        p_offset: pageParam,
+      });
+      if (error) throw error;
+      return data as { total: number; limit: number; offset: number; items: PlatformTenantClientRow[] };
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((n, p) => n + p.items.length, 0);
+      return loaded < lastPage.total ? loaded : undefined;
+    },
+  });
+}
+
+export function usePlatformTenantScans(tenantId?: string) {
+  return useInfiniteQuery({
+    queryKey: platformQueryKeys.tenantScans(tenantId ?? ""),
+    enabled: !!tenantId,
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await supabase.rpc("get_platform_tenant_scans", {
+        p_tenant_id: tenantId,
+        p_limit: PAGE_SIZE,
+        p_offset: pageParam,
+      });
+      if (error) throw error;
+      return data as { total: number; limit: number; offset: number; items: PlatformTenantScanRow[] };
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((n, p) => n + p.items.length, 0);
+      return loaded < lastPage.total ? loaded : undefined;
     },
   });
 }

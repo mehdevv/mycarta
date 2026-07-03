@@ -157,7 +157,6 @@ export function OnboardingCardShowcase({
             footerHint={businessName}
             hint="Premier tampon offert !"
             animated
-            showWatermark
           />
         </div>
       </motion.div>

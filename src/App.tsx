@@ -258,6 +258,10 @@ function Router() {
       <Route path="/reward/:id" component={RewardClaim} />
       <Route path="/rewards/:code" component={RewardClaim} />
 
+      <Route path="/platform/platform/:rest*">
+        {(params) => <Redirect to={`/platform/${params["rest*"] ?? ""}`} />}
+      </Route>
+
       <Route path="/platform" nest>
         <Switch>
           <Route path="/businesses/:id">

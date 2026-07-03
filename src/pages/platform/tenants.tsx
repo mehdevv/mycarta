@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, Fragment } from "react";
 import { Link } from "wouter";
 import { usePlatformTenants } from "@/api/platform";
 import type { PlatformTenantRow } from "@/api/platform";
@@ -16,7 +16,8 @@ import {
   TenantPlanDialog,
 } from "@/components/platform/tenant-admin-dialogs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Download, QrCode, Crown, Trash2, Eye } from "lucide-react";
+import { Search, Download, QrCode, Crown, Trash2, Eye, ChevronDown, ChevronRight } from "lucide-react";
+import { TenantListQuickInfo } from "@/components/platform/tenant-dossier-panels";
 import { downloadCsv, formatDateFr } from "@/lib/platform-export";
 
 type DialogKind = "qr" | "plan" | "delete" | null;
@@ -52,6 +53,7 @@ export default function PlatformTenantsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeTenant, setActiveTenant] = useState<PlatformTenantRow | null>(null);
   const [dialog, setDialog] = useState<DialogKind>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const openDialog = (tenant: PlatformTenantRow, kind: DialogKind) => {
     setActiveTenant(tenant);
@@ -153,12 +155,30 @@ export default function PlatformTenantsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((t) => (
+                  {filtered.map((t) => {
+                    const expanded = expandedId === t.id;
+                    return (
+                      <Fragment key={t.id}>
                     <tr key={t.id}>
                       <td>
-                        <Link href={`/platform/businesses/${t.id}`} className="plat-link plat-cell-primary">{t.name}</Link>
-                        <p className="plat-cell-mono plat-cell-muted">{t.slug}</p>
-                        <p className="plat-cell-muted">{t.ownerEmail}</p>
+                        <div className="flex items-start gap-2">
+                          <button
+                            type="button"
+                            className="mt-0.5 text-slate-400 hover:text-white"
+                            onClick={() => setExpandedId(expanded ? null : t.id)}
+                            aria-label={expanded ? "Réduire" : "Voir les détails"}
+                          >
+                            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </button>
+                          <div>
+                            <Link href={`/businesses/${t.id}`} className="plat-link plat-cell-primary">{t.name}</Link>
+                            <p className="plat-cell-mono plat-cell-muted">{t.slug}</p>
+                            <p className="plat-cell-muted">{t.ownerName} · {t.ownerEmail}</p>
+                            {(t.ownerProfilePhone || t.ownerPhone) && (
+                              <p className="plat-cell-muted text-xs">{t.ownerProfilePhone ?? t.ownerPhone}</p>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td>{t.planName}</td>
                       <td><StatusBadge status={t.subscriptionStatus} /></td>
@@ -190,7 +210,7 @@ export default function PlatformTenantsPage() {
                             <Crown className="h-3.5 w-3.5" />
                           </PlatformButton>
                           <Link
-                            href={`/platform/businesses/${t.id}`}
+                            href={`/businesses/${t.id}`}
                             className="plat-btn plat-btn--secondary plat-btn--sm !px-2 inline-flex items-center justify-center"
                             title="Détails"
                           >
@@ -208,7 +228,24 @@ export default function PlatformTenantsPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    {expanded && (
+                      <tr key={`${t.id}-detail`}>
+                        <td colSpan={11} className="!p-0">
+                          <TenantListQuickInfo tenant={t} />
+                          <div className="px-4 pb-4">
+                            <Link href={`/businesses/${t.id}`}>
+                              <PlatformButton size="sm" className="gap-2">
+                                <Eye className="h-4 w-4" />
+                                Fiche complète — tout voir
+                              </PlatformButton>
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

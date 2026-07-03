@@ -1,3 +1,5 @@
+import { enforceCardColorPair } from "@/lib/card-color-contrast";
+
 export type AiCardDesignResult = {
   primaryColor: string;
   secondaryColor: string;
@@ -5,7 +7,6 @@ export type AiCardDesignResult = {
   designSummary: string;
   suggestedRewardValue: string | null;
 };
-
 export type AiCardDesignInput = {
   prompt: string;
   businessName?: string;
@@ -81,9 +82,11 @@ function parseAiJson(raw: string): AiCardDesignResult | null {
     const suggestedRewardValue =
       typeof rewardRaw === "string" && rewardRaw.trim() ? rewardRaw.trim().slice(0, 120) : null;
 
+    const colors = enforceCardColorPair(primary, secondary);
+
     return {
-      primaryColor: primary,
-      secondaryColor: secondary,
+      primaryColor: colors.primary,
+      secondaryColor: colors.secondary,
       backgroundSvg,
       designSummary,
       suggestedRewardValue,
