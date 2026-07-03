@@ -116,6 +116,7 @@ export interface ClientCard {
   stampMilestones?: { position: number; label: string }[];
   pendingRewardId?: string | null;
   pendingRewardDescription?: string | null;
+  showCartaWatermark?: boolean;
   rewards?: ClientCardReward[];
   recentScans?: { scannedAt: string; status: string; stampsAdded: number }[];
 }

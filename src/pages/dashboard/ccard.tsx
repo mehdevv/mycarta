@@ -11,6 +11,7 @@ import CardEditorSidebar, {
 } from "@/components/fidelity/card-editor-sidebar";
 import { clampMilestonesToThreshold } from "@/lib/stamp-milestones";
 import { spendProgressPercent } from "@/lib/spend-rewards";
+import { shouldShowCartaWatermark } from "@/lib/trial-watermark";
 
 export default function CardEditorPage() {
   const { data: settings, isLoading } = useGetSettings();
@@ -42,6 +43,7 @@ export default function CardEditorPage() {
 
   const planId = trialStatus?.planId ?? tenant?.planId ?? "trial";
   const limits = getBrandingLimits(planId);
+  const showWatermark = shouldShowCartaWatermark(null, planId);
   const milestones = clampMilestonesToThreshold(state.stampMilestones, state.stampThreshold);
 
   if (isLoading) {
@@ -86,6 +88,7 @@ export default function CardEditorPage() {
             rewardValue={state.rewardValue}
             milestones={milestones}
             showCustomBg={limits.canCustomCardBackground}
+            showWatermark={showWatermark}
           />
         </div>
 

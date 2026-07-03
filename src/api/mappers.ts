@@ -143,6 +143,7 @@ export function mapClientCard(raw: Record<string, unknown>) {
     stampMilestones: parseStampMilestones(r.stampMilestones),
     pendingRewardId: pendingId,
     pendingRewardDescription: pendingDesc,
+    showCartaWatermark: Boolean(r.showCartaWatermark),
     rewards,
     recentScans: Array.isArray(r.recentScans)
       ? (r.recentScans as Record<string, unknown>[]).map((scan) => {

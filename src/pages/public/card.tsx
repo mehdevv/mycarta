@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useRoute, Link } from "wouter";
 import { useGetClientCard, useGetTenantBySlug } from "@/api";
 import { Button } from "@/components/ui/button";
@@ -15,13 +15,14 @@ import CardLinkBar from "@/components/client/card-link-bar";
 import { cardPageUrl, normalizeCardCode } from "@/lib/card-code";
 import { nextMilestoneHintText, spendRewardHintText } from "@/lib/client-i18n";
 import { useClientI18n } from "@/hooks/use-client-i18n";
-import { useEffect } from "react";
 import { useShopBranding, normalizeAssetUrl, resolveBusinessLogo } from "@/hooks/use-branding";
 import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
 import { resolveLoyaltyFlags } from "@/lib/loyalty-program";
+import { shouldShowCartaWatermark } from "@/lib/trial-watermark";
 import { rememberClientTenantSlug, clientEnrolPath, getClientTenantSlug } from "@/lib/scoped-routes";
 import PageMeta from "@/components/seo/page-meta";
 import { absoluteUrl, buildTenantCardMeta } from "@/lib/seo";
+import CartaCardWatermark, { useCartaWatermarkDismissed } from "@/components/fidelity/carta-card-watermark";
 
 export default function CardView() {
   const [, slugParams] = useRoute("/:slug/card/:code");
@@ -31,6 +32,8 @@ export default function CardView() {
     ? normalizeCardCode(slugParams?.code ?? legacyParams?.code ?? "")
     : "";
   const cardRef = useRef<HTMLDivElement>(null);
+  const cardSlug = tenantSlug || getClientTenantSlug() || "";
+  const watermarkDismissed = useCartaWatermarkDismissed(cardSlug);
 
   const { data: tenantMeta, isLoading: tenantMetaLoading } = useGetTenantBySlug(tenantSlug || undefined);
   const tenantId = (tenantMeta?.id as string) ?? undefined;
@@ -140,17 +143,21 @@ export default function CardView() {
         ? t("spendQrHint")
         : t("showQrHint");
 
-  const cardSlug = tenantSlug || getClientTenantSlug() || "";
   const cardMeta = {
     ...buildTenantCardMeta(businessName || card.businessName, cardSlug, businessLogo),
     url: absoluteUrl(cardSlug ? `/${cardSlug}/card/${code}` : `/card/${code}`),
   };
+  const showWatermark = shouldShowCartaWatermark(
+    card.showCartaWatermark,
+    tenantMeta?.planId as string | undefined,
+  );
+  const showWatermarkBar = showWatermark && !watermarkDismissed;
 
   return (
     <ClientShell primaryColor={card.primaryColor} secondaryColor={secondary}>
       <PageMeta {...cardMeta} />
       <motion.div
-        className="flex flex-col min-h-[100dvh] max-w-md mx-auto pb-6"
+        className={`flex flex-col min-h-[100dvh] max-w-md mx-auto ${showWatermarkBar ? "pb-28" : "pb-6"}`}
         variants={fadeUp}
         initial="initial"
         animate="animate"
@@ -328,6 +335,7 @@ export default function CardView() {
           )}
         </div>
       </motion.div>
+      {showWatermarkBar && <CartaCardWatermark placement="viewport" tenantSlug={cardSlug} />}
     </ClientShell>
   );
 }

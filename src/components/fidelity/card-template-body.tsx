@@ -10,6 +10,8 @@ import {
 import type { StampMilestone } from "@/lib/stamp-milestones";
 import type { RewardMode } from "@/lib/spend-rewards";
 import { formatDzd } from "@/lib/pricing";
+import CartaCardWatermark from "@/components/fidelity/carta-card-watermark";
+import { cn } from "@/lib/utils";
 
 type CardTemplateBodyProps = {
   cardDesignId?: string | null;
@@ -35,6 +37,7 @@ type CardTemplateBodyProps = {
   footerHint?: string;
   compact?: boolean;
   animated?: boolean;
+  showWatermark?: boolean;
 };
 
 function ProgressBar({
@@ -169,6 +172,7 @@ export default function CardTemplateBody({
   footerHint,
   compact = false,
   animated = false,
+  showWatermark = false,
 }: CardTemplateBodyProps) {
   const showStamps = stampsEnabled ?? (rewardMode === "stamps" || rewardMode === "both");
   const showSpend = spendEnabled ?? (rewardMode === "spend" || rewardMode === "both");
@@ -276,7 +280,8 @@ export default function CardTemplateBody({
       : `${currentStamps}/${stampThreshold}`;
 
   return (
-    <div className={`card-tpl-surface card-tpl ${tplClass}`}>
+    <div className={cn(showWatermark && "card-tpl-wrap")}>
+      <div className={`card-tpl-surface card-tpl ${tplClass}`}>
       <div className="card-tpl-bg absolute inset-0 bg-cover bg-center pointer-events-none" style={bgStyle} />
       <div className="card-tpl-overlay absolute inset-0 pointer-events-none" />
 
@@ -314,6 +319,9 @@ export default function CardTemplateBody({
           {footerBlock}
         </DetailsPanel>
       </div>
+      </div>
+
+      {showWatermark && <CartaCardWatermark placement="card" />}
     </div>
   );
 }
