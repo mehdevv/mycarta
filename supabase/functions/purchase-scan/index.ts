@@ -2,6 +2,7 @@
 // Endpoint: {VITE_SUPABASE_URL}/functions/v1/purchase-scan — JWT: ON
 // Local app: http://localhost:5173/worker — All links: supabase/functions/LINKS.md
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { checkPlanLimits } from "../_shared/plan-limits.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -234,12 +235,8 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { data: limitsRaw } = await admin.rpc("check_plan_limits", {
-      p_tenant_id: tenantId,
-      p_check: "tenant_scans_today",
-    });
-    const limits = limitsRaw as { allowed?: boolean; reason?: string; upgrade_required?: boolean };
-    if (!limits?.allowed) {
+    const limits = await checkPlanLimits(admin, tenantId, "tenant_scans_today");
+    if (!limits.allowed) {
       return jsonResponse(
         { error: limits.reason ?? "plan_limit", upgradeRequired: limits.upgrade_required ?? true },
         402,

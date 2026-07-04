@@ -9,7 +9,7 @@ import MarketingPageShell from "@/components/landing/marketing-page-shell";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { useRegisterTenant } from "@/api/tenant";
-import { supabase } from "@/lib/supabase";
+import { supabaseBusiness } from "@/lib/supabase";
 import { PLANS, getPlan } from "@/lib/pricing";
 import { usePlatformBranding } from "@/hooks/use-branding";
 import { Check } from "lucide-react";
@@ -90,13 +90,13 @@ const phoneSchema = z
         affiliateCode: affiliateRef ?? undefined,
       });
 
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error } = await supabaseBusiness.auth.signInWithPassword({
         email: values.email,
         password: values.password,
       });
       if (error) throw error;
 
-      login(authData.session?.access_token ?? "");
+      login("business");
       toast({
         title: "Compte créé",
         description: `Essai gratuit 14 jours — plan ${planLabel}`,

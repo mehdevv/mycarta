@@ -13,12 +13,12 @@ const roleLabels: Record<UserRole, string> = {
 };
 
 export default function PlatformAccessDenied({ role }: { role: UserRole }) {
-  const { logout, user } = useAuth();
-  const logoutMutation = useLogout();
+  const { logoutBusiness, businessUser: user } = useAuth();
+  const logoutMutation = useLogout("business");
 
   const handleLogout = async () => {
     await logoutMutation.mutateAsync();
-    logout();
+    await logoutBusiness();
     window.location.href = "/shop";
   };
 

@@ -4,9 +4,11 @@ import { invokeFunction, supabase } from "@/lib/supabase";
 export function usePurchaseScan() {
   return useMutation({
     mutationFn: async ({ data }: { data: { clientQrToken: string } }) => {
-      return invokeFunction<Record<string, unknown>>("purchase-scan", {
-        clientQrToken: data.clientQrToken,
-      });
+      return invokeFunction<Record<string, unknown>>(
+        "purchase-scan",
+        { clientQrToken: data.clientQrToken },
+        "worker",
+      );
     },
   });
 }
@@ -22,7 +24,7 @@ export function useConfirmPurchaseScan() {
         amountDzd?: number;
       };
     }) => {
-      return invokeFunction<Record<string, unknown>>("confirm-purchase-scan", data);
+      return invokeFunction<Record<string, unknown>>("confirm-purchase-scan", data, "worker");
     },
   });
 }

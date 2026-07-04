@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { useLogin } from "@/api";
 import { useRegisterTenant } from "@/api/tenant";
-import { supabase } from "@/lib/supabase";
+import { supabaseBusiness } from "@/lib/supabase";
 import { PLANS } from "@/lib/pricing";
 import { usePlatformBranding } from "@/hooks/use-branding";
 import { useLocale } from "@/lib/i18n/locale-context";
@@ -188,7 +188,12 @@ export default function ShopAuthPage() {
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { toast } = useToast();
-  const { login, logout, isAuthenticated, user, isLoading: authLoading } = useAuth();
+  const {
+    login,
+    businessUser,
+    isBusinessAuthenticated,
+    isBusinessLoading: authLoading,
+  } = useAuth();
   const loginMutation = useLogin();
   const registerMutation = useRegisterTenant();
   const platform = usePlatformBranding();
@@ -240,30 +245,24 @@ export default function ShopAuthPage() {
   }
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated || !user) return;
-    if (user.role === "super_admin") {
+    if (authLoading || !isBusinessAuthenticated || !businessUser) return;
+    if (businessUser.role === "super_admin") {
       setLocation("~/platform");
       return;
     }
-    if (user.role === "sales_rep") {
+    if (businessUser.role === "sales_rep") {
       setLocation("~/rep");
       return;
     }
-    if (user.role === "affiliate") {
+    if (businessUser.role === "affiliate") {
       setLocation("~/affiliate");
       return;
     }
-    if (user.role === "owner") {
+    if (businessUser.role === "owner") {
       setLocation("~/dashboard");
       return;
     }
-    logout();
-    toast({
-      title: t("auth.toast.workerAccount"),
-      description: t("auth.toast.workerAccountDesc"),
-      variant: "destructive",
-    });
-  }, [authLoading, isAuthenticated, user, logout, toast, t]);
+  }, [authLoading, isBusinessAuthenticated, businessUser, setLocation]);
 
   const loginForm = useForm<z.infer<ReturnType<typeof loginSchema>>>({
     resolver: zodResolver(loginSchema(t)),
@@ -288,7 +287,7 @@ export default function ShopAuthPage() {
   async function onLogin(values: z.infer<ReturnType<typeof loginSchema>>) {
     try {
       const response = await loginMutation.mutateAsync({ data: values });
-      login(response.accessToken);
+      login("business");
       toast({ title: t("auth.toast.loginWelcome") });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : t("auth.toast.wrongCredentials");
@@ -309,13 +308,13 @@ export default function ShopAuthPage() {
         affiliateCode: affiliateRef ?? undefined,
       });
 
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error } = await supabaseBusiness.auth.signInWithPassword({
         email: values.email,
         password: values.password,
       });
       if (error) throw error;
 
-      login(authData.session?.access_token ?? "");
+      login("business");
       toast({
         title: t("auth.toast.signupCreated"),
         description: t("auth.toast.signupCreatedDesc", { plan: planLabel }),
@@ -360,7 +359,7 @@ export default function ShopAuthPage() {
     });
   }
 
-  if (isAuthenticated) {
+  if (isBusinessAuthenticated) {
     return (
       <div className="auth-shell auth-shell--loading">
         <Loader2 className="h-8 w-8 animate-spin text-[var(--landing-text-secondary)]" />

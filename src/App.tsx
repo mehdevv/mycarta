@@ -7,6 +7,7 @@ import SkipLink from "@/components/layout/skip-link";
 import PageTransition from "@/components/layout/page-transition";
 import NotFound from "@/pages/not-found";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { AuthRouteSync } from "@/lib/auth-route-sync";
 import { LocaleProvider, useLocale } from "@/lib/i18n/locale-context";
 
 import { TenantProvider } from "@/lib/tenant-context";
@@ -108,7 +109,9 @@ function ProtectedRoute({
   loginPath: string;
   loadingFallback?: React.ReactNode;
 }) {
-  const { user, isLoading } = useAuth();
+  const { businessUser, workerUser, isBusinessLoading, isWorkerLoading } = useAuth();
+  const user = role === "worker" ? workerUser : businessUser;
+  const isLoading = role === "worker" ? isWorkerLoading : isBusinessLoading;
 
   if (isLoading) {
     return loadingFallback ?? <LoadingScreen />;
@@ -116,21 +119,22 @@ function ProtectedRoute({
 
   if (!user) return <Redirect to={`~${loginPath}`} />;
   if (user.role !== role) {
-    if (user.role === "super_admin") return <Redirect to="~/platform" />;
-    if (user.role === "sales_rep") return <Redirect to="~/rep" />;
-    if (user.role === "affiliate") return <Redirect to="~/affiliate" />;
-    if (user.role === "owner") return <Redirect to="~/dashboard" />;
-    return <Redirect to="~/worker" />;
+    if (businessUser?.role === "super_admin") return <Redirect to="~/platform" />;
+    if (businessUser?.role === "sales_rep") return <Redirect to="~/rep" />;
+    if (businessUser?.role === "affiliate") return <Redirect to="~/affiliate" />;
+    if (businessUser?.role === "owner") return <Redirect to="~/dashboard" />;
+    if (workerUser?.role === "worker") return <Redirect to="~/worker" />;
+    return <Redirect to={`~${loginPath}`} />;
   }
 
   return <Component />;
 }
 
 function RepPortalGate({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { businessUser, isBusinessLoading } = useAuth();
   const { t } = useLocale();
 
-  if (isLoading) {
+  if (isBusinessLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-3">
@@ -141,11 +145,11 @@ function RepPortalGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) return <Redirect to="~/shop" />;
-  if (user.role !== "sales_rep") {
-    if (user.role === "super_admin") return <Redirect to="~/platform" />;
-    if (user.role === "affiliate") return <Redirect to="~/affiliate" />;
-    if (user.role === "owner") return <Redirect to="~/dashboard" />;
+  if (!businessUser) return <Redirect to="~/shop" />;
+  if (businessUser.role !== "sales_rep") {
+    if (businessUser.role === "super_admin") return <Redirect to="~/platform" />;
+    if (businessUser.role === "affiliate") return <Redirect to="~/affiliate" />;
+    if (businessUser.role === "owner") return <Redirect to="~/dashboard" />;
     return <Redirect to="~/worker" />;
   }
 
@@ -157,10 +161,10 @@ function RepPortalGate({ children }: { children: React.ReactNode }) {
 }
 
 function AffiliatePortalGate({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { businessUser, isBusinessLoading } = useAuth();
   const { t } = useLocale();
 
-  if (isLoading) {
+  if (isBusinessLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-3">
@@ -171,11 +175,11 @@ function AffiliatePortalGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) return <Redirect to="~/shop" />;
-  if (user.role !== "affiliate") {
-    if (user.role === "super_admin") return <Redirect to="~/platform" />;
-    if (user.role === "sales_rep") return <Redirect to="~/rep" />;
-    if (user.role === "owner") return <Redirect to="~/dashboard" />;
+  if (!businessUser) return <Redirect to="~/shop" />;
+  if (businessUser.role !== "affiliate") {
+    if (businessUser.role === "super_admin") return <Redirect to="~/platform" />;
+    if (businessUser.role === "sales_rep") return <Redirect to="~/rep" />;
+    if (businessUser.role === "owner") return <Redirect to="~/dashboard" />;
     return <Redirect to="~/worker" />;
   }
 
@@ -187,10 +191,10 @@ function AffiliatePortalGate({ children }: { children: React.ReactNode }) {
 }
 
 function PlatformProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  const { user, isLoading } = useAuth();
+  const { businessUser, isBusinessLoading } = useAuth();
   const { t } = useLocale();
 
-  if (isLoading) {
+  if (isBusinessLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-3">
@@ -201,8 +205,8 @@ function PlatformProtectedRoute({ component: Component }: { component: React.Com
     );
   }
 
-  if (!user) return <Redirect to="~/shop" />;
-  if (user.role !== "super_admin") return <PlatformAccessDenied role={user.role} />;
+  if (!businessUser) return <Redirect to="~/shop" />;
+  if (businessUser.role !== "super_admin") return <PlatformAccessDenied role={businessUser.role} />;
 
   return (
     <PlatformLayout>
@@ -215,11 +219,11 @@ function PlatformProtectedRoute({ component: Component }: { component: React.Com
 
 function WorkerProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { slug, isLoading } = useCurrentTenant();
-  const { user, isLoading: authLoading } = useAuth();
+  const { workerUser, isWorkerLoading } = useAuth();
   const resolvedSlug = slug ?? getWorkerTenantSlug();
   const loginPath = employeeLoginPath(resolvedSlug);
 
-  if (isLoading || authLoading) {
+  if (isLoading || isWorkerLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
@@ -227,7 +231,7 @@ function WorkerProtectedRoute({ component: Component }: { component: React.Compo
     );
   }
 
-  if (!user && !resolvedSlug) {
+  if (!workerUser && !resolvedSlug) {
     return <EmployeePortalHint />;
   }
 
@@ -236,7 +240,9 @@ function WorkerProtectedRoute({ component: Component }: { component: React.Compo
 
 function Router() {
   return (
-    <Switch>
+    <>
+      <AuthRouteSync />
+      <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/tarifs" component={PricingRedirect} />
       <Route path="/signup" component={SignupRedirect} />
@@ -435,6 +441,7 @@ function Router() {
 
       <Route component={NotFound} />
     </Switch>
+    </>
   );
 }
 

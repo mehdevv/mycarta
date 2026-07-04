@@ -21,8 +21,8 @@ function workerPath(path: string) {
 
 export default function WorkerLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
-  const { logout } = useAuth();
-  const logoutMutation = useLogout();
+  const { logoutWorker } = useAuth();
+  const logoutMutation = useLogout("worker");
   const { slug } = useCurrentTenant();
   const resolvedSlug = slug ?? getWorkerTenantSlug();
   const branding = useShopBranding(resolvedSlug ?? undefined);
@@ -31,7 +31,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
     try {
       await logoutMutation.mutateAsync();
     } finally {
-      logout();
+      await logoutWorker();
       setLocation(`~${employeeLoginPath(resolvedSlug)}`);
     }
   };

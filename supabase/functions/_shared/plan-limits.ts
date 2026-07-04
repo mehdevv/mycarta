@@ -22,7 +22,12 @@ export async function checkPlanLimits(
     p_tenant_id: tenantId,
     p_check: check,
   });
-  if (error) return { allowed: false, reason: error.message };
+  if (error) {
+    return { allowed: false, reason: error.message, upgrade_required: false };
+  }
+  if (!data || typeof data !== "object") {
+    return { allowed: true };
+  }
   return data as { allowed: boolean; reason?: string; upgrade_required?: boolean };
 }
 

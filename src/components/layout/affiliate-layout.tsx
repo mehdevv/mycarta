@@ -32,14 +32,14 @@ function isNavActive(itemPath: string, location: string) {
 export default function AffiliateLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { logout, user } = useAuth();
-  const logoutMutation = useLogout();
+  const { logoutBusiness, user } = useAuth();
+  const logoutMutation = useLogout("business");
 
   const handleLogout = async () => {
     try {
       await logoutMutation.mutateAsync();
     } finally {
-      logout();
+      await logoutBusiness();
       setLocation("~/shop");
     }
   };

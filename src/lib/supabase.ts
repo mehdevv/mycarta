@@ -1,14 +1,65 @@
-import { createClient, FunctionsFetchError, FunctionsHttpError } from "@supabase/supabase-js";
+import { createClient, FunctionsFetchError, FunctionsHttpError, type SupabaseClient } from "@supabase/supabase-js";
+import { AUTH_STORAGE_KEYS, getActiveAuthSlot, type AuthSlot } from "@/lib/auth-slots";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-export const supabase = createClient(
-  supabaseUrl || "https://placeholder.supabase.co",
-  supabaseAnonKey || "placeholder",
-);
+function createAuthClient(storageKey: string): SupabaseClient {
+  return createClient(supabaseUrl || "https://placeholder.supabase.co", supabaseAnonKey || "placeholder", {
+    auth: {
+      storageKey,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
+}
+
+export const supabaseBusiness = createAuthClient(AUTH_STORAGE_KEYS.business);
+export const supabaseWorker = createAuthClient(AUTH_STORAGE_KEYS.worker);
+
+/** Business portal APIs (dashboard, platform, rep, affiliate). */
+export const supabase = supabaseBusiness;
+
+export function getSupabaseClient(slot: AuthSlot = getActiveAuthSlot()): SupabaseClient {
+  return slot === "worker" ? supabaseWorker : supabaseBusiness;
+}
+
+let legacyMigrationStarted = false;
+
+/** Move a pre-dual-session JWT into the correct slot once. */
+export async function migrateLegacyAuthSession() {
+  if (legacyMigrationStarted || typeof window === "undefined") return;
+  legacyMigrationStarted = true;
+
+  const [{ data: businessSession }, { data: workerSession }] = await Promise.all([
+    supabaseBusiness.auth.getSession(),
+    supabaseWorker.auth.getSession(),
+  ]);
+  if (businessSession.session || workerSession.session) return;
+
+  const legacyClient = createClient(
+    supabaseUrl || "https://placeholder.supabase.co",
+    supabaseAnonKey || "placeholder",
+  );
+  const { data: { session } } = await legacyClient.auth.getSession();
+  if (!session) return;
+
+  const { data: profile } = await legacyClient
+    .from("profiles")
+    .select("role")
+    .eq("id", session.user.id)
+    .maybeSingle();
+
+  const target = profile?.role === "worker" ? supabaseWorker : supabaseBusiness;
+  await target.auth.setSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  });
+  await legacyClient.auth.signOut();
+}
 
 async function getFunctionErrorMessage(
   name: string,
@@ -45,8 +96,10 @@ async function getFunctionErrorMessage(
 export async function invokeFunction<T>(
   name: string,
   body?: Record<string, unknown>,
+  slot: AuthSlot = getActiveAuthSlot(),
 ): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(name, { body });
+  const client = getSupabaseClient(slot);
+  const { data, error } = await client.functions.invoke(name, { body });
   if (error) throw new Error(await getFunctionErrorMessage(name, error, data));
   if (data && typeof data === "object" && "error" in data && data.error) {
     throw new Error(String(data.error));

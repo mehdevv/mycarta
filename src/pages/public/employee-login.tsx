@@ -24,7 +24,7 @@ export default function EmployeeLogin() {
   const tenantSlug = slugParams?.slug ?? "";
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { login, logout, isAuthenticated, user } = useAuth();
+  const { login, logoutWorker, isWorkerAuthenticated, workerUser, isWorkerLoading } = useAuth();
   const loginMutation = useLoginWorker();
   const { data: tenantMeta, isLoading: tenantLoading } = useGetTenantBySlug(tenantSlug || undefined);
   const branding = useShopBranding(tenantSlug || undefined);
@@ -41,10 +41,10 @@ export default function EmployeeLogin() {
   }, [tenantSlug]);
 
   useEffect(() => {
-    if (!isAuthenticated || !user) return;
-    if (user.role === "worker") {
-      if (tenantId && user.tenantId && user.tenantId !== tenantId) {
-        logout();
+    if (!isWorkerAuthenticated || !workerUser) return;
+    if (workerUser.role === "worker") {
+      if (tenantId && workerUser.tenantId && workerUser.tenantId !== tenantId) {
+        void logoutWorker();
         toast({
           title: "Compte incorrect",
           description: "Ce compte appartient à une autre boutique.",
@@ -53,15 +53,8 @@ export default function EmployeeLogin() {
         return;
       }
       setLocation("~/worker");
-      return;
     }
-    logout();
-    toast({
-      title: "Compte administrateur détecté",
-      description: "Ce compte ne peut pas se connecter ici. Utilisez l'espace commerçant de votre boutique.",
-      variant: "destructive",
-    });
-  }, [isAuthenticated, user, tenantId, logout, toast]);
+  }, [isWorkerAuthenticated, workerUser, tenantId, logoutWorker, toast, setLocation]);
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     if (!tenantSlug || !tenantId) {
@@ -76,7 +69,7 @@ export default function EmployeeLogin() {
           password: values.password,
         },
       });
-      login(response.accessToken);
+      login("worker");
       toast({ title: "Bon retour !" });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Nom ou mot de passe incorrect";
@@ -105,7 +98,7 @@ export default function EmployeeLogin() {
     );
   }
 
-  if (isAuthenticated) {
+  if (isWorkerAuthenticated) {
     return (
       <div className="min-h-screen bg-muted flex items-center justify-center p-4">
         <p className="text-muted-foreground">Chargement…</p>

@@ -31,7 +31,7 @@ export default function SettingsPanel() {
   const { data: settings } = useGetSettings();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user, logout } = useAuth();
+  const { user, logoutBusiness } = useAuth();
   const { slug, tenant } = useCurrentTenant();
   const [, setLocation] = useLocation();
   const deleteAccount = useDeleteTenantAccount();
@@ -104,7 +104,7 @@ export default function SettingsPanel() {
     try {
       await deleteAccount.mutateAsync({ password: deletePassword, confirmSlug });
       resetDeleteDialog();
-      await logout();
+      await logoutBusiness();
       setLocation("/");
       toast({ title: "Compte supprimé" });
     } catch (e) {

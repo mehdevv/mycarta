@@ -205,8 +205,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (typeof window === "undefined") return false;
     return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
   });
-  const { logout } = useAuth();
-  const logoutMutation = useLogout();
+  const { logoutBusiness } = useAuth();
+  const logoutMutation = useLogout("business");
   useShopSettingsRealtime();
 
   useEffect(() => {
@@ -221,7 +221,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     try {
       await logoutMutation.mutateAsync();
     } finally {
-      logout();
+      await logoutBusiness();
       setLocation("~/shop");
     }
   };

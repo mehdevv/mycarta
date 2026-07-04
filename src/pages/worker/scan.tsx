@@ -195,11 +195,14 @@ export default function WorkerScan() {
                 const redeemRes = await mutateRedeemRef.current({
                   data: { rewardQrToken: `reward:${parsed.rewardId}` },
                 });
+                if (!redeemRes || typeof redeemRes !== "object") {
+                  throw new Error("Invalid response from server");
+                }
                 setRedeemResult({
-                  approved: redeemRes.approved,
-                  reason: redeemRes.reason,
-                  clientName: redeemRes.clientName,
-                  rewardDescription: redeemRes.rewardDescription,
+                  approved: Boolean(redeemRes.approved),
+                  reason: (redeemRes.reason as string | null) ?? null,
+                  clientName: (redeemRes.clientName as string | null) ?? null,
+                  rewardDescription: String(redeemRes.rewardDescription ?? "Reward"),
                 });
                 setStep("redeem-result");
                 if (redeemRes.approved) vibrate([50, 30, 50]);
@@ -210,6 +213,9 @@ export default function WorkerScan() {
               const scanResult = await mutateScanRef.current({
                 data: { clientQrToken: parsed.token },
               });
+              if (!scanResult || typeof scanResult !== "object") {
+                throw new Error("Invalid response from server");
+              }
               const r = normalizeScanResult(scanResult as Record<string, unknown>);
               setResult(r);
 

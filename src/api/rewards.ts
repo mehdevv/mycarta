@@ -106,7 +106,7 @@ export function useRedeemRewardScan() {
         redeemedAt?: string;
       }>("redeem-reward", {
         rewardQrToken: data.rewardQrToken,
-      });
+      }, "worker");
     },
   });
 }

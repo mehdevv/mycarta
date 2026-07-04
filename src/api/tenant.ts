@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { invokeFunction, supabase } from "@/lib/supabase";
+import { invokeFunction, supabase, getSupabaseClient } from "@/lib/supabase";
+import { getActiveAuthSlot } from "@/lib/auth-slots";
 import type { PlanId } from "@/lib/pricing";
 
 export interface Tenant {
@@ -47,6 +48,7 @@ export function useGetCurrentTenant(options?: { enabled?: boolean }) {
     enabled: options?.enabled ?? true,
     staleTime: 60_000,
     queryFn: async (): Promise<Tenant | null> => {
+      const supabase = getSupabaseClient(getActiveAuthSlot());
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
@@ -86,10 +88,11 @@ export function useGetTrialStatus(options?: { enabled?: boolean }) {
     queryKey: ["trial-status"],
     enabled: options?.enabled ?? true,
     queryFn: async (): Promise<TrialStatus | null> => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const client = getSupabaseClient(getActiveAuthSlot());
+      const { data: { user } } = await client.auth.getUser();
       if (!user) return null;
 
-      const { data: profile } = await supabase
+      const { data: profile } = await client
         .from("profiles")
         .select("tenant_id")
         .eq("id", user.id)
@@ -97,7 +100,7 @@ export function useGetTrialStatus(options?: { enabled?: boolean }) {
 
       if (!profile?.tenant_id) return null;
 
-      const { data, error } = await supabase.rpc("get_trial_status", {
+      const { data, error } = await client.rpc("get_trial_status", {
         p_tenant_id: profile.tenant_id,
       });
 

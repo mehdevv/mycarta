@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient, supabase } from "@/lib/supabase";
 
 export const FRAUD_REASON_LABELS: Record<string, string> = {
   blocked: "Customer card is blocked",
@@ -70,6 +70,7 @@ export function useWorkerTodayScans() {
   return useQuery({
     queryKey: ["worker-today-scans"],
     queryFn: async () => {
+      const supabase = getSupabaseClient("worker");
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { scans: [], count: 0 };
 
