@@ -28,6 +28,14 @@ export async function checkPlanLimits(
   if (!data || typeof data !== "object") {
     return { allowed: true };
   }
+  const row = data as { allowed?: boolean; reason?: string; upgrade_required?: boolean };
+  if (row.allowed === false) {
+    return {
+      allowed: false,
+      reason: row.reason ?? "plan_limit",
+      upgrade_required: row.upgrade_required ?? true,
+    };
+  }
   return data as { allowed: boolean; reason?: string; upgrade_required?: boolean };
 }
 

@@ -134,27 +134,62 @@ Deno.serve(async (req) => {
     if (!user) return jsonResponse({ error: "Unauthorized" }, 401);
 
     const { pendingScanId, products, amountDzd } = await req.json();
+    if (!pendingScanId || typeof pendingScanId !== "string") {
+      return jsonResponse({ error: "pendingScanId required" }, 400);
+    }
+
+    const supabaseUser = supabase;
+    const { data: worker } = await supabaseUser
+      .from("profiles")
+      .select("id, role, is_active, tenant_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!worker || worker.role !== "worker" || !worker.is_active || !worker.tenant_id) {
+      return jsonResponse({ error: "Worker not authorized" }, 403);
+    }
+
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { data: scan } = await admin
+    const { data: scan, error: scanError } = await admin
       .from("scan_logs")
-      .select("*, clients(*)")
+      .select("*")
       .eq("id", pendingScanId)
-      .single();
+      .maybeSingle();
+
+    if (scanError) {
+      return jsonResponse({ error: scanError.message }, 400);
+    }
 
     if (!scan) {
-      return jsonResponse({ error: "Invalid pending scan" }, 400);
+      return jsonResponse({ error: "Pending scan not found" }, 404);
+    }
+
+    if (scan.tenant_id !== worker.tenant_id || scan.worker_id !== worker.id) {
+      return jsonResponse({ error: "Pending scan not found" }, 404);
     }
 
     const isAmountPending = Boolean(scan.pending_amount);
     const isProductsPending = Boolean(scan.pending_products);
     const willApplyStamps = Boolean(scan.pending_stamps);
+    const purchaseAmountRequested = Math.max(0, Math.floor(Number(amountDzd) || 0));
+    const isOpenSpendScan =
+      !isAmountPending &&
+      !isProductsPending &&
+      purchaseAmountRequested > 0 &&
+      (scan.status === "pending" || scan.status === "approved") &&
+      Number(scan.spend_added_dzd ?? 0) === 0 &&
+      (scan.purchase_amount_dzd == null || Number(scan.purchase_amount_dzd) === 0);
 
-    if (!isAmountPending && !isProductsPending) {
-      return jsonResponse({ error: "Invalid pending scan" }, 400);
+    if (scan.status !== "pending" && scan.status !== "approved") {
+      return jsonResponse({ error: "This scan was already completed or is no longer pending" }, 400);
+    }
+
+    if (!isAmountPending && !isProductsPending && !isOpenSpendScan) {
+      return jsonResponse({ error: "This scan was already completed or is no longer pending" }, 400);
     }
 
     const tenantId = scan.tenant_id as string;
@@ -170,16 +205,13 @@ Deno.serve(async (req) => {
     const spendThreshold = settings?.spend_threshold_dzd ?? 10000;
     const fallbackReward = settings?.reward_value || "Loyalty reward";
 
-    const scanRow = scan as { clients: Record<string, unknown> | null; client_id: string };
-    let client = scanRow.clients;
-    if (!client) {
-      const { data: clientRow } = await admin
-        .from("clients")
-        .select("*")
-        .eq("id", scanRow.client_id)
-        .maybeSingle();
-      client = clientRow;
-    }
+    const scanRow = scan as { client_id: string };
+    const { data: clientRow } = await admin
+      .from("clients")
+      .select("*")
+      .eq("id", scanRow.client_id)
+      .maybeSingle();
+    const client = clientRow;
     if (!client) {
       return jsonResponse({ error: "Client not found for pending scan" }, 404);
     }
@@ -201,7 +233,8 @@ Deno.serve(async (req) => {
 
       if (isAmountPending) {
         return jsonResponse({
-          approved: true,
+          approved: false,
+          pendingWorkerInput: true,
           reason: null,
           stampsAdded: 0,
           spendAddedDzd: 0,
@@ -227,6 +260,7 @@ Deno.serve(async (req) => {
           pending_stamps: false,
           stamps_added: 1,
           reward_triggered: stampOutcome.rewardTriggered,
+          status: "approved",
         })
         .eq("id", pendingScanId);
 
@@ -301,8 +335,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const purchaseAmount = Math.max(0, Math.floor(Number(amountDzd) || 0));
-    if (purchaseAmount <= 0) {
+    const purchaseAmount = purchaseAmountRequested;
+    if ((isAmountPending || isOpenSpendScan) && purchaseAmount <= 0) {
       return jsonResponse({ error: "amountDzd required" }, 400);
     }
 
@@ -336,6 +370,7 @@ Deno.serve(async (req) => {
     await admin
       .from("scan_logs")
       .update({
+        status: "approved",
         pending_amount: false,
         pending_stamps: false,
         purchase_amount_dzd: purchaseAmount,

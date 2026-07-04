@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { scanResultVariants, vibrate } from "@/lib/motion";
 import { parseScannedQr } from "@/lib/supabase";
+import { normalizeCardCode, isCardCode } from "@/lib/card-code";
 import { FRAUD_REASON_LABELS } from "@/api/fraud";
 import { CheckCircle, XCircle, Gift, ArrowLeft, Minus, Plus, ScanLine, CalendarClock, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
@@ -104,6 +105,7 @@ export default function WorkerScan() {
   const [redeemResult, setRedeemResult] = useState<RedeemResult | null>(null);
   const [productQtys, setProductQtys] = useState<ProductQty>({});
   const [amountDzd, setAmountDzd] = useState("");
+  const [manualCode, setManualCode] = useState("");
   const [cameraStarting, setCameraStarting] = useState(false);
   const html5QrcodeRef = useRef<InstanceType<typeof import("html5-qrcode").Html5Qrcode> | null>(null);
   const processingRef = useRef(false);
@@ -140,6 +142,7 @@ export default function WorkerScan() {
     setRedeemResult(null);
     setProductQtys({});
     setAmountDzd("");
+    setManualCode("");
     setCameraStarting(false);
   }, [stopScanner]);
 
@@ -154,6 +157,112 @@ export default function WorkerScan() {
       if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
     };
   }, [step, result, redeemResult, handleReset]);
+
+  const processScanPayload = useCallback(
+    async (raw: string, options?: { stopCamera?: boolean }) => {
+      if (processingRef.current) return;
+      processingRef.current = true;
+
+      try {
+        if (options?.stopCamera) {
+          try {
+            await stopScanner();
+          } catch {
+            // Keep processing even if camera teardown fails.
+          }
+        }
+
+        const parsed = parseScannedQr(raw);
+
+        if (parsed.type === "reward") {
+          const redeemRes = await mutateRedeemRef.current({
+            data: { rewardQrToken: `reward:${parsed.rewardId}` },
+          });
+          if (!redeemRes || typeof redeemRes !== "object") {
+            throw new Error("Invalid response from server");
+          }
+          setRedeemResult({
+            approved: Boolean(redeemRes.approved),
+            reason: (redeemRes.reason as string | null) ?? null,
+            clientName: (redeemRes.clientName as string | null) ?? null,
+            rewardDescription: String(redeemRes.rewardDescription ?? "Reward"),
+          });
+          setStep("redeem-result");
+          setManualCode("");
+          if (redeemRes.approved) vibrate([50, 30, 50]);
+          else vibrate([100, 50, 100]);
+          return;
+        }
+
+        const scanResult = await mutateScanRef.current({
+          data: { clientQrToken: parsed.token },
+        });
+        if (!scanResult || typeof scanResult !== "object") {
+          throw new Error("Invalid response from server");
+        }
+        const r = normalizeScanResult(scanResult as Record<string, unknown>);
+        setResult(r);
+        setManualCode("");
+
+        const awaitingWorkerInput = Boolean(
+          (scanResult as Record<string, unknown>).pendingWorkerInput
+          ?? ((r.needsProducts || r.needsAmount) && r.pendingScanId),
+        );
+
+        if (r.approved && !awaitingWorkerInput) vibrate(50);
+        else if (!r.approved && !awaitingWorkerInput) vibrate([100, 50, 100]);
+
+        if (r.needsProducts && r.pendingScanId) {
+          setProductQtys({});
+          setStep("products");
+        } else if (r.needsAmount && r.pendingScanId) {
+          setAmountDzd("");
+          setStep("amount");
+        } else {
+          setStep("result");
+        }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Scan failed";
+        toastRef.current({
+          title: "Scan failed",
+          description: message,
+          variant: "destructive",
+        });
+        processingRef.current = false;
+        setStep("scan");
+      }
+    },
+    [stopScanner],
+  );
+
+  const handleManualSubmit = async () => {
+    const trimmed = manualCode.trim();
+    if (!trimmed) {
+      toast({
+        title: "Card number required",
+        description: "Enter the 6-digit number from the customer's loyalty card.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (trimmed.toLowerCase().startsWith("reward:")) {
+      await processScanPayload(trimmed, { stopCamera: true });
+      return;
+    }
+
+    const code = normalizeCardCode(trimmed);
+    if (!isCardCode(code)) {
+      toast({
+        title: "Invalid card number",
+        description: "Enter the 6-digit number shown on the loyalty card.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    await processScanPayload(code, { stopCamera: true });
+  };
 
   useEffect(() => {
     if (step !== "scan") {
@@ -179,68 +288,7 @@ export default function WorkerScan() {
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 250, height: 250 } },
           async (decodedText: string) => {
-            if (processingRef.current) return;
-            processingRef.current = true;
-
-            try {
-              const parsed = parseScannedQr(decodedText);
-
-              try {
-                await stopScanner();
-              } catch {
-                // Keep processing the scan even if camera teardown fails.
-              }
-
-              if (parsed.type === "reward") {
-                const redeemRes = await mutateRedeemRef.current({
-                  data: { rewardQrToken: `reward:${parsed.rewardId}` },
-                });
-                if (!redeemRes || typeof redeemRes !== "object") {
-                  throw new Error("Invalid response from server");
-                }
-                setRedeemResult({
-                  approved: Boolean(redeemRes.approved),
-                  reason: (redeemRes.reason as string | null) ?? null,
-                  clientName: (redeemRes.clientName as string | null) ?? null,
-                  rewardDescription: String(redeemRes.rewardDescription ?? "Reward"),
-                });
-                setStep("redeem-result");
-                if (redeemRes.approved) vibrate([50, 30, 50]);
-                else vibrate([100, 50, 100]);
-                return;
-              }
-
-              const scanResult = await mutateScanRef.current({
-                data: { clientQrToken: parsed.token },
-              });
-              if (!scanResult || typeof scanResult !== "object") {
-                throw new Error("Invalid response from server");
-              }
-              const r = normalizeScanResult(scanResult as Record<string, unknown>);
-              setResult(r);
-
-              if (r.approved) vibrate(50);
-              else vibrate([100, 50, 100]);
-
-              if (r.needsProducts && r.pendingScanId) {
-                setProductQtys({});
-                setStep("products");
-              } else if (r.needsAmount && r.pendingScanId) {
-                setAmountDzd("");
-                setStep("amount");
-              } else {
-                setStep("result");
-              }
-            } catch (err: unknown) {
-              const message = err instanceof Error ? err.message : "Scan failed";
-              toastRef.current({
-                title: "Scan failed",
-                description: message,
-                variant: "destructive",
-              });
-              processingRef.current = false;
-              setStep("scan");
-            }
+            await processScanPayload(decodedText, { stopCamera: true });
           },
           () => {},
         );
@@ -266,7 +314,7 @@ export default function WorkerScan() {
       window.clearTimeout(timer);
       void stopScanner();
     };
-  }, [step, stopScanner]);
+  }, [step, stopScanner, processScanPayload]);
 
   const handleConfirmAmount = async () => {
     if (!result?.pendingScanId) return;
@@ -281,13 +329,17 @@ export default function WorkerScan() {
       });
       const merged = { ...result, ...normalizeScanResult(confirmed as Record<string, unknown>) };
       setResult(merged);
+      const stillPending = Boolean(
+        (confirmed as Record<string, unknown>).pendingWorkerInput
+        ?? (merged.needsAmount && merged.pendingScanId),
+      );
       if (merged.needsAmount && merged.pendingScanId) {
         setAmountDzd("");
         setStep("amount");
       } else {
         setStep("result");
+        if (!stillPending) vibrate(50);
       }
-      vibrate(50);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Confirm failed";
       toast({ title: "Échec", description: message, variant: "destructive" });
@@ -305,13 +357,17 @@ export default function WorkerScan() {
       });
       const merged = { ...result, ...normalizeScanResult(confirmed as Record<string, unknown>) };
       setResult(merged);
+      const stillPending = Boolean(
+        (confirmed as Record<string, unknown>).pendingWorkerInput
+        ?? (merged.needsAmount && merged.pendingScanId),
+      );
       if (merged.needsAmount && merged.pendingScanId) {
         setAmountDzd("");
         setStep("amount");
       } else {
         setStep("result");
+        if (!stillPending) vibrate(50);
       }
-      vibrate(50);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Confirm failed";
       toast({ title: "Confirm failed", description: message, variant: "destructive" });
@@ -328,7 +384,7 @@ export default function WorkerScan() {
           <h2 className="text-xl font-bold">Scan QR Code</h2>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center gap-6">
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 pb-4">
           <div className="relative w-full max-w-sm">
             <div
               id={SCANNER_ELEMENT_ID}
@@ -347,10 +403,57 @@ export default function WorkerScan() {
               />
             </div>
           </div>
-          <p className="text-muted-foreground text-sm text-center">
+          <p className="text-muted-foreground text-sm text-center px-2">
             Point the camera at a loyalty card or reward QR code
           </p>
           <ScanLine className="h-5 w-5 text-primary animate-pulse" />
+
+          <div className="w-full max-w-sm pt-2">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">or</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+            <label className="text-sm font-medium" htmlFor="manual-card-code">
+              Enter card number
+            </label>
+            <div className="mt-2 flex gap-2">
+              <input
+                id="manual-card-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="000 000"
+                maxLength={7}
+                value={manualCode}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 6);
+                  setManualCode(
+                    digits.length > 3 ? `${digits.slice(0, 3)} ${digits.slice(3)}` : digits,
+                  );
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleManualSubmit();
+                }}
+                className="flex-1 rounded-xl border border-input bg-background px-4 py-3 text-lg font-semibold tracking-widest text-center"
+              />
+              <Button
+                type="button"
+                className="h-auto px-5"
+                onClick={() => void handleManualSubmit()}
+                disabled={purchaseScan.isPending || redeemRewardScan.isPending || manualCode.replace(/\D/g, "").length < 1}
+              >
+                {purchaseScan.isPending || redeemRewardScan.isPending ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  "Go"
+                )}
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground text-center">
+              6-digit number on the customer&apos;s loyalty card
+            </p>
+          </div>
         </div>
       </div>
     );

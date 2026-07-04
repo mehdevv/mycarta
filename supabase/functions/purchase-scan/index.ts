@@ -2,7 +2,6 @@
 // Endpoint: {VITE_SUPABASE_URL}/functions/v1/purchase-scan — JWT: ON
 // Local app: http://localhost:5173/worker — All links: supabase/functions/LINKS.md
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { checkPlanLimits } from "../_shared/plan-limits.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +14,39 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+type PlanLimitResult = {
+  allowed: boolean;
+  reason?: string;
+  upgrade_required?: boolean;
+};
+
+/** Null-safe wrapper — RPC may return null when no limit applies. */
+async function checkPlanLimits(
+  admin: ReturnType<typeof createClient>,
+  tenantId: string,
+  check: string,
+): Promise<PlanLimitResult> {
+  const { data, error } = await admin.rpc("check_plan_limits", {
+    p_tenant_id: tenantId,
+    p_check: check,
+  });
+  if (error) {
+    return { allowed: false, reason: error.message, upgrade_required: false };
+  }
+  if (!data || typeof data !== "object") {
+    return { allowed: true };
+  }
+  const row = data as PlanLimitResult;
+  if (row.allowed === false) {
+    return {
+      allowed: false,
+      reason: row.reason ?? "plan_limit",
+      upgrade_required: row.upgrade_required ?? true,
+    };
+  }
+  return { allowed: true };
 }
 
 function extractToken(raw: string): string {
@@ -236,10 +268,11 @@ Deno.serve(async (req) => {
     );
 
     const limits = await checkPlanLimits(admin, tenantId, "tenant_scans_today");
-    if (!limits.allowed) {
+    if (limits.allowed === false) {
+      const status = limits.reason === "subscription_expired" ? 402 : 403;
       return jsonResponse(
         { error: limits.reason ?? "plan_limit", upgradeRequired: limits.upgrade_required ?? true },
-        402,
+        status,
       );
     }
 
@@ -382,7 +415,7 @@ Deno.serve(async (req) => {
           client_id: client.id,
           worker_id: worker.id,
           scan_type: "purchase",
-          status: "approved",
+          status: "pending",
           stamps_added: 0,
           spend_added_dzd: 0,
           pending_products: needsProducts,
@@ -400,7 +433,8 @@ Deno.serve(async (req) => {
       }
 
       return jsonResponse({
-        approved: true,
+        approved: false,
+        pendingWorkerInput: true,
         reason: null,
         stampsAdded: 0,
         spendAddedDzd: 0,
@@ -475,7 +509,6 @@ Deno.serve(async (req) => {
         .eq("scan_log_id", scan.id)
         .maybeSingle();
 
-      const flags = resolveProgramFlags(settings as Record<string, unknown> | null);
       return jsonResponse({
         approved: true,
         reason: null,
@@ -495,7 +528,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const flags = resolveProgramFlags(settings as Record<string, unknown> | null);
     return jsonResponse({
       approved: true,
       reason: null,
