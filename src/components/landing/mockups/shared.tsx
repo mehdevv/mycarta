@@ -1,9 +1,19 @@
-export function PhoneShell({ children }: { children: React.ReactNode }) {
+export function PhoneShell({
+  children,
+  compact = false,
+}: {
+  children: React.ReactNode;
+  compact?: boolean;
+}) {
   return (
-    <div className="landing-mockup-phone">
+    <div className={`landing-mockup-phone${compact ? " landing-mockup-phone--compact" : ""}`}>
       <div className="landing-mockup-phone-bezel">
         <div className="landing-mockup-phone-notch" aria-hidden />
-        <div className="landing-mockup-phone-screen">{children}</div>
+        <div
+          className={`landing-mockup-phone-screen${compact ? " landing-mockup-phone-screen--compact" : ""}`}
+        >
+          {children}
+        </div>
         <div className="landing-mockup-phone-home" aria-hidden />
       </div>
     </div>

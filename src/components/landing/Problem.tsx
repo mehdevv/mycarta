@@ -1,9 +1,11 @@
 import { ArrowRight, FileX, UserX, AlertTriangle, BellOff, type LucideIcon } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { LandingMobileCarousel } from "./LandingMobileCarousel";
+import { ProblemHighlightText } from "./problem-highlight-text";
 import { usePlatformBranding } from "@/hooks/use-branding";
 import { useLocale } from "@/lib/i18n/locale-context";
 import { LandingSectionLink } from "./LandingSectionLink";
+import problemTitleIcon from "@/assets/luttle icon red.png";
 
 export function LandingProblem() {
   const platform = usePlatformBranding();
@@ -24,8 +26,8 @@ export function LandingProblem() {
       <div className="container-page">
         <SectionHeader
           eyebrow={t("landing.problem.eyebrow")}
-          title={t("landing.problem.title")}
-          description={t("landing.problem.description")}
+          title={<ProblemHighlightText text={t("landing.problem.title")} inlineIcon={problemTitleIcon} />}
+          description={<ProblemHighlightText text={t("landing.problem.description")} />}
           className="landing-section-header--wide"
         />
 
@@ -49,8 +51,12 @@ export function LandingProblem() {
                 >
                   <Icon size={20} color="var(--landing-text)" strokeWidth={1.5} />
                 </div>
-                <h3 className="landing-h3 mt-4">{it.title}</h3>
-                <p className="landing-body-sm mt-2 flex-1">{it.body}</p>
+                <h3 className="landing-h3 mt-4">
+                  <ProblemHighlightText text={it.title} />
+                </h3>
+                <p className="landing-body-sm mt-2 flex-1">
+                  <ProblemHighlightText text={it.body} />
+                </p>
               </article>
             );
           })}

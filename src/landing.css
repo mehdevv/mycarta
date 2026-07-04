@@ -940,19 +940,19 @@ html:has(.landing-page) {
     display: flex;
     flex-direction: row;
     align-items: stretch;
-    gap: 0.75rem;
+    gap: 0;
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-x pan-y;
+    touch-action: pan-x;
     scrollbar-width: none;
     width: 100%;
     margin: 0;
-    padding-inline: var(--landing-carousel-edge-pad);
-    scroll-padding-inline: var(--landing-carousel-edge-pad);
-    cursor: grab;
+    padding-inline: 0;
+    scroll-padding-inline: 0;
   }
 
   @media (min-width: 640px) {
@@ -969,12 +969,12 @@ html:has(.landing-page) {
     flex: 0 0 100%;
     width: 100%;
     max-width: 100%;
-    scroll-snap-align: center;
-    scroll-snap-stop: normal;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
     min-width: 0;
     box-sizing: border-box;
     padding-block: var(--landing-carousel-edge-pad);
-    padding-inline: 0;
+    padding-inline: var(--landing-carousel-edge-pad);
   }
 
   .landing-carousel-track[data-carousel-mode="true"] .landing-carousel-slide > * {
@@ -1998,6 +1998,15 @@ html:has(.landing-page) {
     background: #fff;
   }
 
+  .landing-mockup-phone-screen--compact {
+    min-height: 300px;
+  }
+
+  .landing-mockup-phone--compact .landing-mockup-phone-status {
+    padding-top: 8px;
+    padding-bottom: 4px;
+  }
+
   .landing-mockup-phone-home {
     width: 96px;
     height: 4px;
@@ -2807,6 +2816,27 @@ html:has(.landing-page) {
     .landing-section-cta .btn-pill,
     .landing-section-cta .btn-primary {
       width: auto;
+    }
+  }
+
+  .landing-problem-em {
+    color: #dc2626;
+    font-weight: 600;
+  }
+
+  .landing-problem-title-icon {
+    display: inline-block;
+    vertical-align: -0.2em;
+    height: 1.35em;
+    width: auto;
+    margin-inline: 0.15em;
+    object-fit: contain;
+  }
+
+  @media (min-width: 640px) {
+    .landing-problem-title-icon {
+      height: 1.5em;
+      margin-inline: 0.25em;
     }
   }
 

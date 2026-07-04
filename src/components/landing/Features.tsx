@@ -200,7 +200,7 @@ export function LandingFeatures() {
                   ))}
                 </ul>
                 <div className="mt-6 landing-feature-mobile-mockup">
-                  <FeatureMockup screen={i} />
+                  <FeatureMockup screen={i} variant="phone" />
                 </div>
               </article>
             ))}

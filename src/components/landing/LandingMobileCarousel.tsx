@@ -4,7 +4,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -17,9 +16,35 @@ const BREAKPOINT_PX: Record<Breakpoint, number> = {
   lg: 1024,
 };
 
+const SNAP_THRESHOLD_PX = 4;
+const AUTOPLAY_MS = 3000;
+const AUTOPLAY_RESUME_MS = 6000;
+
 function readIsCarousel(minWidth: Breakpoint) {
   if (typeof window === "undefined") return false;
   return window.innerWidth < BREAKPOINT_PX[minWidth];
+}
+
+function getSlideElements(track: HTMLElement) {
+  return Array.from(track.querySelectorAll<HTMLElement>("[data-carousel-slide]"));
+}
+
+function nearestSlideIndex(track: HTMLElement, slides: HTMLElement[]) {
+  if (!slides.length) return 0;
+
+  const scrollLeft = track.scrollLeft;
+  let bestIndex = 0;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  slides.forEach((slide, i) => {
+    const distance = Math.abs(slide.offsetLeft - scrollLeft);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = i;
+    }
+  });
+
+  return bestIndex;
 }
 
 type LandingMobileCarouselProps = {
@@ -29,6 +54,8 @@ type LandingMobileCarouselProps = {
   minWidth?: Breakpoint;
   showArrows?: boolean;
   showCounter?: boolean;
+  autoPlay?: boolean;
+  autoPlayIntervalMs?: number;
   className?: string;
 };
 
@@ -39,36 +66,28 @@ export function LandingMobileCarousel({
   minWidth = "sm",
   showArrows = true,
   showCounter = true,
+  autoPlay = true,
+  autoPlayIntervalMs = AUTOPLAY_MS,
   className = "",
 }: LandingMobileCarouselProps) {
   const trackRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef({ active: false, startX: 0, scrollLeft: 0, moved: false });
+  const snapLockRef = useRef(false);
+  const activeRef = useRef(0);
+  const autoplayPausedRef = useRef(false);
+  const autoplayResumeTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const slides = Children.toArray(children);
   const count = slides.length;
   const [active, setActive] = useState(0);
   const [isCarousel, setIsCarousel] = useState(() => readIsCarousel(minWidth));
 
-  const syncActiveFromScroll = useCallback(() => {
-    const track = trackRef.current;
-    if (!track) return;
+  activeRef.current = active;
 
-    const slidesEls = Array.from(track.querySelectorAll<HTMLElement>("[data-carousel-slide]"));
-    if (!slidesEls.length) return;
-
-    const center = track.scrollLeft + track.clientWidth / 2;
-    let bestIndex = 0;
-    let bestDistance = Number.POSITIVE_INFINITY;
-
-    slidesEls.forEach((slide, i) => {
-      const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
-      const distance = Math.abs(slideCenter - center);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestIndex = i;
-      }
-    });
-
-    setActive((prev) => (prev === bestIndex ? prev : bestIndex));
+  const pauseAutoplay = useCallback((resumeAfterMs = AUTOPLAY_RESUME_MS) => {
+    autoplayPausedRef.current = true;
+    clearTimeout(autoplayResumeTimerRef.current);
+    autoplayResumeTimerRef.current = setTimeout(() => {
+      autoplayPausedRef.current = false;
+    }, resumeAfterMs);
   }, []);
 
   const scrollTo = useCallback((index: number, behavior: ScrollBehavior = "smooth") => {
@@ -76,15 +95,38 @@ export function LandingMobileCarousel({
     if (!track) return;
 
     const clamped = Math.max(0, Math.min(count - 1, index));
-    const slide = track.querySelectorAll<HTMLElement>("[data-carousel-slide]")[clamped];
+    const slideEls = getSlideElements(track);
+    const slide = slideEls[clamped];
     if (!slide) return;
 
-    track.scrollTo({
-      left: slide.offsetLeft - (track.clientWidth - slide.clientWidth) / 2,
-      behavior,
-    });
+    const targetLeft = slide.offsetLeft;
+    if (Math.abs(track.scrollLeft - targetLeft) <= SNAP_THRESHOLD_PX) {
+      setActive(clamped);
+      return;
+    }
+
+    snapLockRef.current = true;
+    track.scrollTo({ left: targetLeft, behavior });
     setActive(clamped);
   }, [count]);
+
+  const settleToNearestSlide = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const track = trackRef.current;
+    if (!track || snapLockRef.current) return;
+
+    const slideEls = getSlideElements(track);
+    if (!slideEls.length) return;
+
+    const nearest = nearestSlideIndex(track, slideEls);
+    const targetLeft = slideEls[nearest].offsetLeft;
+
+    setActive(nearest);
+
+    if (Math.abs(track.scrollLeft - targetLeft) > SNAP_THRESHOLD_PX) {
+      snapLockRef.current = true;
+      track.scrollTo({ left: targetLeft, behavior });
+    }
+  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia(`(min-width: ${BREAKPOINT_PX[minWidth]}px)`);
@@ -105,103 +147,93 @@ export function LandingMobileCarousel({
     const track = trackRef.current;
     if (!track || !isCarousel) return;
 
-    const slidesEls = Array.from(track.querySelectorAll<HTMLElement>("[data-carousel-slide]"));
-    if (!slidesEls.length) return;
+    const supportsScrollEnd = "onscrollend" in window;
+    let scrollEndTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let bestIndex = -1;
-        let bestRatio = 0;
+    const onScroll = () => {
+      if (snapLockRef.current) return;
+      pauseAutoplay();
+      const slideEls = getSlideElements(track);
+      setActive(nearestSlideIndex(track, slideEls));
 
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          const ratio = entry.intersectionRatio;
-          if (ratio > bestRatio) {
-            bestRatio = ratio;
-            bestIndex = slidesEls.indexOf(entry.target as HTMLElement);
-          }
-        });
+      if (!supportsScrollEnd) {
+        clearTimeout(scrollEndTimer);
+        scrollEndTimer = setTimeout(() => {
+          snapLockRef.current = false;
+          settleToNearestSlide("smooth");
+        }, 120);
+      }
+    };
 
-        if (bestIndex >= 0) {
-          setActive((prev) => (prev === bestIndex ? prev : bestIndex));
-        }
-      },
-      {
-        root: track,
-        threshold: [0.55, 0.7, 0.85],
-      },
-    );
+    const onScrollEnd = () => {
+      snapLockRef.current = false;
+      settleToNearestSlide("smooth");
+    };
 
-    slidesEls.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [isCarousel, count]);
+    track.addEventListener("scroll", onScroll, { passive: true });
+    if (supportsScrollEnd) {
+      track.addEventListener("scrollend", onScrollEnd);
+    }
+
+    return () => {
+      track.removeEventListener("scroll", onScroll);
+      if (supportsScrollEnd) {
+        track.removeEventListener("scrollend", onScrollEnd);
+      }
+      clearTimeout(scrollEndTimer);
+    };
+  }, [isCarousel, count, settleToNearestSlide, pauseAutoplay]);
+
+  const goNextLoop = useCallback(() => {
+    scrollTo((activeRef.current + 1) % count);
+  }, [count, scrollTo]);
+
+  useEffect(() => {
+    if (!isCarousel || !autoPlay || count <= 1) return;
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (reducedMotion.matches) return;
+
+    const tick = () => {
+      if (autoplayPausedRef.current || document.hidden) return;
+      goNextLoop();
+    };
+
+    const interval = window.setInterval(tick, autoPlayIntervalMs);
+    return () => window.clearInterval(interval);
+  }, [isCarousel, autoPlay, autoPlayIntervalMs, count, goNextLoop]);
+
+  useEffect(() => {
+    return () => clearTimeout(autoplayResumeTimerRef.current);
+  }, []);
 
   useEffect(() => {
     const track = trackRef.current;
-    if (!track || !isCarousel) return;
+    if (!track || !isCarousel || !autoPlay) return;
 
-    const onScroll = () => syncActiveFromScroll();
-    track.addEventListener("scroll", onScroll, { passive: true });
-    return () => track.removeEventListener("scroll", onScroll);
-  }, [isCarousel, count, syncActiveFromScroll]);
+    const onUserScroll = () => pauseAutoplay();
 
-  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!isCarousel) return;
-    const track = trackRef.current;
-    if (!track) return;
+    track.addEventListener("touchstart", onUserScroll, { passive: true });
+    track.addEventListener("pointerdown", onUserScroll);
 
-    dragRef.current = {
-      active: true,
-      startX: e.clientX,
-      scrollLeft: track.scrollLeft,
-      moved: false,
+    return () => {
+      track.removeEventListener("touchstart", onUserScroll);
+      track.removeEventListener("pointerdown", onUserScroll);
     };
-    track.setPointerCapture(e.pointerId);
-    track.style.scrollSnapType = "none";
-    track.style.cursor = "grabbing";
+  }, [isCarousel, autoPlay, pauseAutoplay]);
+
+  const goPrev = () => {
+    pauseAutoplay();
+    scrollTo(active - 1);
   };
-
-  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!dragRef.current.active) return;
-    const track = trackRef.current;
-    if (!track) return;
-
-    const dx = e.clientX - dragRef.current.startX;
-    if (Math.abs(dx) > 6) dragRef.current.moved = true;
-    track.scrollLeft = dragRef.current.scrollLeft - dx;
+  const goNext = () => {
+    pauseAutoplay();
+    scrollTo(active + 1);
   };
-
-  const endPointerDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!dragRef.current.active) return;
-    const track = trackRef.current;
-    dragRef.current.active = false;
-    if (!track) return;
-
-    track.releasePointerCapture(e.pointerId);
-    track.style.cursor = "";
-    track.style.scrollSnapType = "";
-
-    if (!dragRef.current.moved) return;
-
-    const slidesEls = Array.from(track.querySelectorAll<HTMLElement>("[data-carousel-slide]"));
-    const center = track.scrollLeft + track.clientWidth / 2;
-    let bestIndex = 0;
-    let bestDistance = Number.POSITIVE_INFINITY;
-
-    slidesEls.forEach((slide, i) => {
-      const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
-      const distance = Math.abs(slideCenter - center);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestIndex = i;
-      }
-    });
-
-    scrollTo(bestIndex, "smooth");
+  const goTo = (index: number) => {
+    pauseAutoplay();
+    scrollTo(index);
   };
-
-  const goPrev = () => scrollTo(active - 1);
-  const goNext = () => scrollTo(active + 1);
 
   return (
     <div className={`landing-carousel ${className}`.trim()}>
@@ -213,10 +245,6 @@ export function LandingMobileCarousel({
           role="region"
           aria-roledescription="carousel"
           aria-label={ariaLabel}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={endPointerDrag}
-          onPointerCancel={endPointerDrag}
         >
           {slides.map((slide, i) => (
             <div
@@ -257,7 +285,7 @@ export function LandingMobileCarousel({
                 aria-selected={active === i}
                 aria-label={`Aller au slide ${i + 1}`}
                 className={`landing-carousel-dot ${active === i ? "is-active" : ""}`}
-                onClick={() => scrollTo(i)}
+                onClick={() => goTo(i)}
               />
             ))}
           </div>

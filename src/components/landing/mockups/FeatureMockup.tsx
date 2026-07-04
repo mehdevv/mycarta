@@ -1,20 +1,54 @@
 import { BrowserChrome, MockupShell, PhoneShell, PhoneStatusBar, Avatar, StampDots } from "./shared";
-import { Search, Camera, CheckCircle, Gift, QrCode, Check, Home, History, Share2, Bookmark } from "lucide-react";
+import {
+  Search,
+  Camera,
+  CheckCircle,
+  Gift,
+  QrCode,
+  Check,
+  Home,
+  History,
+  Share2,
+  Bookmark,
+  Users,
+  BarChart3,
+  Megaphone,
+  type LucideIcon,
+} from "lucide-react";
 
-export function FeatureMockup({ screen }: { screen: number }) {
-  const screens = [
+type FeatureMockupVariant = "desktop" | "phone";
+
+export function FeatureMockup({
+  screen,
+  variant = "desktop",
+}: {
+  screen: number;
+  variant?: FeatureMockupVariant;
+}) {
+  const usePhoneChrome = variant === "phone" || screen >= 3;
+
+  const desktopScreens = [
     <ClientList key="0" />,
     <Analytics key="1" />,
     <Campaign key="2" />,
     <WorkerScan key="3" />,
     <FidelityCard key="4" />,
   ];
-  const isPhone = screen >= 3;
+
+  const phoneScreens = [
+    <ClientListMobile key="0" />,
+    <AnalyticsMobile key="1" />,
+    <CampaignMobile key="2" />,
+    <WorkerScan key="3" />,
+    <FidelityCard key="4" />,
+  ];
+
+  const screens = variant === "phone" ? phoneScreens : desktopScreens;
 
   const slide = (
     <div
       className="relative overflow-hidden flex-1"
-      style={{ aspectRatio: isPhone ? undefined : "4 / 3.2", minHeight: isPhone ? 0 : undefined }}
+      style={{ aspectRatio: usePhoneChrome ? undefined : "4 / 3.2", minHeight: usePhoneChrome ? 0 : undefined }}
     >
       {screens.map((s, i) => (
         <div
@@ -33,11 +67,13 @@ export function FeatureMockup({ screen }: { screen: number }) {
     </div>
   );
 
-  if (isPhone) {
+  if (usePhoneChrome) {
+    const compact = variant === "phone" && screen === 0;
+
     return (
       <div className="w-full mx-auto flex justify-center" style={{ maxWidth: 300 }}>
-        <PhoneShell>
-          <div className="relative flex-1 min-h-[420px]">{screens[screen]}</div>
+        <PhoneShell compact={compact}>
+          <div className={`relative flex-1${compact ? "" : " min-h-[420px]"}`}>{screens[screen]}</div>
         </PhoneShell>
       </div>
     );
@@ -57,6 +93,25 @@ function Pad({ children }: { children: React.ReactNode }) {
 
 function MobilePad({ children }: { children: React.ReactNode }) {
   return <div className="h-full flex flex-col">{children}</div>;
+}
+
+function PhoneDashboardNav({ active }: { active: "clients" | "analytics" | "campaign" }) {
+  const items: { id: typeof active; label: string; icon: LucideIcon }[] = [
+    { id: "clients", label: "Clients", icon: Users },
+    { id: "analytics", label: "Stats", icon: BarChart3 },
+    { id: "campaign", label: "Campaign", icon: Megaphone },
+  ];
+
+  return (
+    <nav className="landing-mockup-phone-nav" aria-hidden>
+      {items.map(({ id, label, icon: Icon }) => (
+        <span key={id} className={`landing-mockup-phone-nav-item${active === id ? " is-active" : ""}`}>
+          <Icon size={16} />
+          {label}
+        </span>
+      ))}
+    </nav>
+  );
 }
 
 function Chip({ children, tone = "default" }: { children: React.ReactNode; tone?: "default" | "muted" | "strong" }) {
@@ -118,6 +173,165 @@ function ClientList() {
         ))}
       </div>
     </Pad>
+  );
+}
+
+function ClientListMobile() {
+  const rows = [
+    { i: "YB", name: "Yasmine Benali", phone: "+213 661 ···", stamps: 9, last: "Today", badge: <Chip tone="strong">Reward!</Chip> },
+    { i: "KL", name: "Karim Larbi", phone: "+33 6 ···", stamps: 4, last: "3d ago", badge: <Chip>Active</Chip> },
+  ];
+
+  return (
+    <MobilePad>
+      <PhoneStatusBar />
+      <div className="px-3 pb-1.5">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[14px] font-semibold text-[#0A1628]">Clients</div>
+            <div className="text-[10px] text-[#9CA3AF]">248 total</div>
+          </div>
+          <button
+            type="button"
+            className="text-[10px] font-medium shrink-0"
+            style={{ color: "#2563EB", border: "1px solid #BFDBFE", padding: "3px 7px", borderRadius: 6 }}
+          >
+            Export
+          </button>
+        </div>
+        <div className="mt-2 flex items-center gap-2 px-2.5 py-1.5" style={{ border: "1px solid #F3F4F6", borderRadius: 8 }}>
+          <Search size={12} color="#9CA3AF" />
+          <span className="text-[10px] text-[#9CA3AF]">Search clients...</span>
+        </div>
+      </div>
+      <div className="px-3 pb-1 flex flex-col gap-1.5">
+        {rows.map((r) => (
+          <div
+            key={r.name}
+            className="py-2 px-2"
+            style={{ border: "1px solid #F3F4F6", borderRadius: 10 }}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Avatar initials={r.i} />
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <div className="text-[12px] font-medium text-[#0A1628] truncate whitespace-nowrap">{r.name}</div>
+                <div className="text-[10px] text-[#9CA3AF] truncate whitespace-nowrap">{r.phone}</div>
+              </div>
+            </div>
+            <div className="mt-1.5 flex items-center justify-between gap-2 pl-10">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <StampDots filled={r.stamps} />
+                <span className="text-[9px] text-[#9CA3AF] shrink-0">{r.last}</span>
+              </div>
+              <div className="shrink-0">{r.badge}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <PhoneDashboardNav active="clients" />
+    </MobilePad>
+  );
+}
+
+function AnalyticsMobile() {
+  const bars = [14, 22, 28, 32, 38, 42, 48, 64];
+  const max = Math.max(...bars);
+
+  return (
+    <MobilePad>
+      <PhoneStatusBar />
+      <div className="px-4 pb-2 flex items-center justify-between">
+        <div className="text-[15px] font-semibold text-[#0A1628]">Analytics</div>
+        <div className="text-[10px] px-2 py-1 rounded" style={{ background: "#F9FAFB", border: "1px solid #F3F4F6", color: "#4B5563" }}>
+          30 days ▾
+        </div>
+      </div>
+      <div className="px-4 grid grid-cols-2 gap-2">
+        {[
+          { l: "New clients", v: "64", t: "↑ 18%" },
+          { l: "Total scans", v: "1,847", t: "↑ 9%" },
+          { l: "Rewards", v: "32", t: "↑ 6%" },
+          { l: "Fraud blocked", v: "3", t: "↓ from 8" },
+        ].map((k) => (
+          <div key={k.l} style={{ background: "#F9FAFB", border: "1px solid #F3F4F6", borderRadius: 8, padding: 8 }}>
+            <div className="text-[9px] text-[#9CA3AF]">{k.l}</div>
+            <div className="text-[14px] font-bold text-[#0A1628] leading-tight">{k.v}</div>
+            <div className="text-[9px]" style={{ color: "#16A34A" }}>{k.t}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mx-4 mt-2.5 flex-1 min-h-0" style={{ background: "#F9FAFB", border: "1px solid #F3F4F6", borderRadius: 8, padding: 10 }}>
+        <div className="text-[9px] font-semibold uppercase tracking-wide text-[#9CA3AF]">New clients</div>
+        <div className="mt-2 flex items-end gap-1 h-[72px]">
+          {bars.map((b, i) => (
+            <div
+              key={i}
+              className="flex-1 rounded-t"
+              style={{
+                height: `${(b / max) * 100}%`,
+                background: i === bars.length - 1 ? "#000" : "var(--landing-accent)",
+              }}
+            />
+          ))}
+        </div>
+      </div>
+      <PhoneDashboardNav active="analytics" />
+    </MobilePad>
+  );
+}
+
+function CampaignMobile() {
+  return (
+    <MobilePad>
+      <PhoneStatusBar />
+      <div className="px-4 pb-2">
+        <div className="text-[15px] font-semibold text-[#0A1628]">New Campaign</div>
+        <div className="mt-2 flex gap-3 text-[11px]">
+          <span className="text-[var(--landing-text)] font-medium pb-0.5" style={{ borderBottom: "2px solid #000" }}>
+            WhatsApp
+          </span>
+          <span className="text-[#9CA3AF]">Email</span>
+        </div>
+      </div>
+      <div className="flex-1 px-4 pb-2 flex flex-col min-h-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] text-[#6B7280]">Send to:</span>
+          <span
+            className="text-[10px] font-medium"
+            style={{ background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE", padding: "3px 8px", borderRadius: 99 }}
+          >
+            All clients (248) ▾
+          </span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1">
+          {["Stamp > 5", "Active 30d"].map((c) => (
+            <span key={c} className="text-[9px]" style={{ border: "1px dashed #BFDBFE", color: "#2563EB", padding: "2px 8px", borderRadius: 99 }}>
+              + {c}
+            </span>
+          ))}
+        </div>
+        <div className="mt-2 flex-1 flex flex-col min-h-0" style={{ border: "1px solid #F3F4F6", borderRadius: 8, padding: 8 }}>
+          <div className="text-[9px] font-medium text-[#9CA3AF]">Message</div>
+          <div className="mt-1 text-[11px] text-[#0A1628] leading-relaxed">
+            Bonjour {"{first_name}"} 👋 Something special for you this week...
+          </div>
+        </div>
+        <div className="mt-2" style={{ background: "#EFF6FF", borderRadius: 8, padding: 8 }}>
+          <div className="text-[9px] font-medium" style={{ color: "#2563EB" }}>Preview — 248 recipients</div>
+          <div className="mt-1.5 inline-block bg-white text-[9px] text-[#0A1628]" style={{ padding: "4px 8px", borderRadius: 8 }}>
+            Bonjour Yasmine 👋 Something special...
+          </div>
+        </div>
+        <button
+          type="button"
+          className="mt-2 w-full text-[11px] font-medium"
+          style={{ background: "#2563EB", color: "white", padding: "8px 10px", borderRadius: 8 }}
+        >
+          Send Now →
+        </button>
+      </div>
+      <PhoneDashboardNav active="campaign" />
+    </MobilePad>
   );
 }
 
