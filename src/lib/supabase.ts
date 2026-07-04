@@ -48,7 +48,12 @@ export async function invokeFunction<T>(
 ): Promise<T> {
   const { data, error } = await supabase.functions.invoke(name, { body });
   if (error) throw new Error(await getFunctionErrorMessage(name, error, data));
-  if (data?.error) throw new Error(data.error);
+  if (data && typeof data === "object" && "error" in data && data.error) {
+    throw new Error(String(data.error));
+  }
+  if (data == null) {
+    throw new Error(`Empty response from "${name}"`);
+  }
   return data as T;
 }
 

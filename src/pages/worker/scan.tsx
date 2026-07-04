@@ -52,38 +52,39 @@ function resolveRewardMode(raw: Record<string, unknown>): ScanResult["rewardMode
   return "stamps";
 }
 
-function normalizeScanResult(raw: Record<string, unknown>): ScanResult {
-  const rewardMode = resolveRewardMode(raw);
-  const stampsEnabled = raw.stampsEnabled !== undefined
-    ? raw.stampsEnabled !== false
+function normalizeScanResult(raw: Record<string, unknown> | null | undefined): ScanResult {
+  const payload = raw ?? {};
+  const rewardMode = resolveRewardMode(payload);
+  const stampsEnabled = payload.stampsEnabled !== undefined
+    ? payload.stampsEnabled !== false
     : rewardMode === "stamps" || rewardMode === "both";
-  const spendEnabled = raw.spendEnabled !== undefined
-    ? raw.spendEnabled === true
+  const spendEnabled = payload.spendEnabled !== undefined
+    ? payload.spendEnabled === true
     : rewardMode === "spend" || rewardMode === "both";
 
   return {
-    approved: Boolean(raw.approved),
-    reason: (raw.reason as string | null) ?? null,
-    stampsAdded: Number(raw.stampsAdded ?? raw.stamps_added ?? 0),
-    spendAddedDzd: Number(raw.spendAddedDzd ?? raw.spend_added_dzd ?? 0),
-    currentStamps: Number(raw.currentStamps ?? raw.current_stamps ?? 0),
-    currentCycleSpendDzd: Number(raw.currentCycleSpendDzd ?? raw.current_cycle_spend_dzd ?? 0),
-    stampThreshold: Number(raw.stampThreshold ?? raw.stamp_threshold ?? 9),
-    spendThresholdDzd: Number(raw.spendThresholdDzd ?? raw.spend_threshold_dzd ?? 10000),
+    approved: Boolean(payload.approved),
+    reason: (payload.reason as string | null) ?? null,
+    stampsAdded: Number(payload.stampsAdded ?? payload.stamps_added ?? 0),
+    spendAddedDzd: Number(payload.spendAddedDzd ?? payload.spend_added_dzd ?? 0),
+    currentStamps: Number(payload.currentStamps ?? payload.current_stamps ?? 0),
+    currentCycleSpendDzd: Number(payload.currentCycleSpendDzd ?? payload.current_cycle_spend_dzd ?? 0),
+    stampThreshold: Number(payload.stampThreshold ?? payload.stamp_threshold ?? 9),
+    spendThresholdDzd: Number(payload.spendThresholdDzd ?? payload.spend_threshold_dzd ?? 10000),
     rewardMode,
     stampsEnabled,
     spendEnabled,
-    currency: String(raw.currency ?? "DZD"),
-    rewardTriggered: Boolean(raw.rewardTriggered ?? raw.reward_triggered),
-    rewardDescription: (raw.rewardDescription ?? raw.reward_description) as string | null | undefined,
-    needsProducts: Boolean(raw.needsProducts ?? raw.needs_products),
-    needsAmount: Boolean(raw.needsAmount ?? raw.needs_amount),
-    products: Array.isArray(raw.products)
-      ? (raw.products as ScanResult["products"])
+    currency: String(payload.currency ?? "DZD"),
+    rewardTriggered: Boolean(payload.rewardTriggered ?? payload.reward_triggered),
+    rewardDescription: (payload.rewardDescription ?? payload.reward_description) as string | null | undefined,
+    needsProducts: Boolean(payload.needsProducts ?? payload.needs_products),
+    needsAmount: Boolean(payload.needsAmount ?? payload.needs_amount),
+    products: Array.isArray(payload.products)
+      ? (payload.products as ScanResult["products"])
       : [],
-    pendingScanId: (raw.pendingScanId ?? raw.pending_scan_id) as string | null | undefined,
-    clientName: (raw.clientName ?? raw.client_name) as string | null | undefined,
-    maxScansPerDay: Number(raw.maxScansPerDay ?? raw.max_scans_per_day ?? 0) || undefined,
+    pendingScanId: (payload.pendingScanId ?? payload.pending_scan_id) as string | null | undefined,
+    clientName: (payload.clientName ?? payload.client_name) as string | null | undefined,
+    maxScansPerDay: Number(payload.maxScansPerDay ?? payload.max_scans_per_day ?? 0) || undefined,
   };
 }
 
@@ -121,15 +122,13 @@ export default function WorkerScan() {
     try {
       await scanner.stop();
     } catch {
-      // Scanner may already be stopped.
+      // Scanner may already be stopped or the video element was removed.
     }
     try {
       scanner.clear();
     } catch {
       // clear() can fail if the element was unmounted.
     }
-    const el = document.getElementById(SCANNER_ELEMENT_ID);
-    if (el) el.innerHTML = "";
   }, []);
 
   const handleReset = useCallback(async () => {
@@ -184,9 +183,13 @@ export default function WorkerScan() {
             processingRef.current = true;
 
             try {
-              await stopScanner();
-
               const parsed = parseScannedQr(decodedText);
+
+              try {
+                await stopScanner();
+              } catch {
+                // Keep processing the scan even if camera teardown fails.
+              }
 
               if (parsed.type === "reward") {
                 const redeemRes = await mutateRedeemRef.current({

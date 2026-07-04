@@ -148,8 +148,8 @@ function scanResponseExtras(
     spendEnabled: flags.spendEnabled,
     rewardMode: programModeLabel(flags),
     currency: settings?.currency ?? "DZD",
-    currentStamps: client.current_cycle_stamps,
-    currentCycleSpendDzd: client.current_cycle_spend_dzd ?? 0,
+    currentStamps: Number(client.current_cycle_stamps ?? 0),
+    currentCycleSpendDzd: Number(client.current_cycle_spend_dzd ?? 0),
     stampThreshold: settings?.stamp_threshold ?? 9,
     spendThresholdDzd: settings?.spend_threshold_dzd ?? 10000,
   };
@@ -178,8 +178,8 @@ function blockedResponse(
     reason,
     stampsAdded: 0,
     spendAddedDzd: 0,
-    currentStamps: client.current_cycle_stamps,
-    currentCycleSpendDzd: client.current_cycle_spend_dzd ?? 0,
+    currentStamps: Number(client.current_cycle_stamps ?? 0),
+    currentCycleSpendDzd: Number(client.current_cycle_spend_dzd ?? 0),
     stampThreshold: settings?.stamp_threshold ?? 9,
     spendThresholdDzd: settings?.spend_threshold_dzd ?? 10000,
     stampsEnabled: flags.stampsEnabled,
@@ -250,7 +250,7 @@ Deno.serve(async (req) => {
       .from("shop_settings")
       .select("*")
       .eq("tenant_id", tenantId)
-      .single();
+      .maybeSingle();
     const client = await findClientByToken(admin, token, tenantId);
 
     if (!client) return jsonResponse({ error: "Client not found" }, 404);
@@ -378,7 +378,7 @@ Deno.serve(async (req) => {
         }));
       }
 
-      const { data: pendingScan } = await admin
+      const { data: pendingScan, error: pendingError } = await admin
         .from("scan_logs")
         .insert({
           tenant_id: tenantId,
@@ -395,6 +395,13 @@ Deno.serve(async (req) => {
         .select("id")
         .single();
 
+      if (pendingError || !pendingScan?.id) {
+        return jsonResponse(
+          { error: pendingError?.message ?? "Could not start pending scan" },
+          500,
+        );
+      }
+
       return jsonResponse({
         approved: true,
         reason: null,
@@ -404,7 +411,7 @@ Deno.serve(async (req) => {
         needsProducts,
         needsAmount,
         products,
-        pendingScanId: pendingScan?.id,
+        pendingScanId: pendingScan.id,
         clientName: client.full_name,
         ...scanResponseExtras(settings as Record<string, unknown>, client, flags),
       });
@@ -412,7 +419,8 @@ Deno.serve(async (req) => {
 
     const threshold = settings?.stamp_threshold ?? 9;
     const milestones = parseMilestones(settings?.stamp_milestones);
-    const newCycleStamps = client.current_cycle_stamps + 1;
+    const currentCycleStamps = Number(client.current_cycle_stamps ?? 0);
+    const newCycleStamps = currentCycleStamps + 1;
     const outcome = resolveStampReward(
       newCycleStamps,
       threshold,
@@ -455,11 +463,11 @@ Deno.serve(async (req) => {
       .from("clients")
       .update({
         current_cycle_stamps: outcome.finalCycleStamps,
-        total_stamps: client.total_stamps + 1,
+        total_stamps: Number(client.total_stamps ?? 0) + 1,
         last_scan_at: new Date().toISOString(),
         total_rewards_earned: outcome.rewardTriggered
-          ? client.total_rewards_earned + 1
-          : client.total_rewards_earned,
+          ? Number(client.total_rewards_earned ?? 0) + 1
+          : Number(client.total_rewards_earned ?? 0),
       })
       .eq("id", client.id);
 
