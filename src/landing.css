@@ -521,7 +521,11 @@ html:has(.landing-page) {
   .landing-pricing-grid {
     max-width: 1040px;
     margin-inline: auto;
-    padding-top: 0.5rem;
+    padding-block: 1rem;
+  }
+
+  #pricing .landing-carousel-shell {
+    overflow: visible;
   }
 
   .landing-pricing-card--featured {
@@ -529,10 +533,19 @@ html:has(.landing-page) {
     z-index: 1;
     border-color: var(--landing-text) !important;
     box-shadow: var(--landing-shadow-elevated) !important;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+  @media (min-width: 640px) {
+    .landing-pricing-card--featured {
+      padding-top: 2.75rem;
+      padding-bottom: 2.75rem;
+    }
   }
   @media (min-width: 768px) {
     .landing-pricing-card--featured {
-      transform: scale(1.03);
+      padding-top: 3rem;
+      padding-bottom: 3rem;
     }
   }
 
@@ -1213,10 +1226,11 @@ html:has(.landing-page) {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 1.25rem;
-      align-items: stretch;
+      align-items: center;
       max-width: 1040px;
       margin-inline: auto;
-      padding-top: 0.5rem;
+      padding-block: 1.5rem;
+      overflow: visible;
     }
   }
 

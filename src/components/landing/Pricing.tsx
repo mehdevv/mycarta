@@ -82,7 +82,7 @@ export function LandingPricing() {
             return (
               <article
                 key={plan.id}
-                className={`landing-card flex flex-col h-full ${featured ? "landing-pricing-card--featured" : "landing-card-interactive"}`}
+                className={`landing-card flex flex-col ${featured ? "landing-pricing-card--featured" : "landing-card-interactive"}`}
               >
                 {featured && (
                   <p className="text-[12px] font-medium uppercase tracking-wide text-[var(--landing-text-secondary)] mb-3">
