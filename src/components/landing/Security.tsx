@@ -15,10 +15,10 @@ export function LandingSecurity() {
   ];
 
   return (
-    <section id="security" className="landing-section" style={{ background: "var(--landing-bg-dark)" }}>
+    <section id="security" className="landing-section landing-security-section" style={{ background: "var(--landing-bg-dark)" }}>
       <div className="container-page">
-        <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-8 sm:gap-10 lg:gap-16 items-start">
-          <div className="lg:sticky lg:top-[calc(var(--landing-nav-h)+32px)]">
+        <div className="landing-security-layout grid lg:grid-cols-[0.9fr_1.1fr] gap-8 sm:gap-10 lg:gap-16 items-start min-w-0 w-full">
+          <div className="landing-security-intro min-w-0 w-full max-w-full lg:sticky lg:top-[calc(var(--landing-nav-h)+32px)]">
             <SectionHeader
               eyebrow={t("landing.security.eyebrow")}
               title={t("landing.security.title")}
