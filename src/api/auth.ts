@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   getSupabaseClient,
   invokeFunction,
+  invokePublicFunction,
   isSupabaseConfigured,
   supabaseBusiness,
   supabaseWorker,
@@ -103,10 +104,10 @@ export function useLoginWorker() {
     }: {
       data: { tenantSlug: string; fullName: string; password: string };
     }) => {
-      const result = await invokeFunction<{
+      const result = await invokePublicFunction<{
         accessToken: string;
         refreshToken: string;
-      }>("login-worker", data, "business");
+      }>("login-worker", data);
 
       const { error } = await supabaseWorker.auth.setSession({
         access_token: result.accessToken,

@@ -18,11 +18,17 @@ export function getActiveAuthSlot(): AuthSlot {
   return activeAuthSlot;
 }
 
-/** Worker routes use the worker session; everything else uses business. */
-export function authSlotForPath(pathname: string): AuthSlot {
+/** Employee portal paths (per-tenant login + scanner). */
+export function isWorkerRoute(pathname: string): boolean {
   const path = pathname.replace(/\/$/, "") || "/";
-  if (path === "/worker" || path.startsWith("/worker/")) return "worker";
-  return "business";
+  if (path === "/worker" || path.startsWith("/worker/")) return true;
+  if (path === "/employee" || path.endsWith("/employee")) return true;
+  return false;
+}
+
+/** Worker portal routes use the worker session; owner dashboard uses business. */
+export function authSlotForPath(pathname: string): AuthSlot {
+  return isWorkerRoute(pathname) ? "worker" : "business";
 }
 
 export function isWorkerRole(role: string | undefined | null): boolean {

@@ -283,7 +283,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const client = await findClientByToken(admin, token, tenantId);
 
-    if (!client) return jsonResponse({ error: "Client not found" }, 404);
+    if (!client) return jsonResponse({ error: "Client not found for this shop" }, 422);
 
     if (client.is_blocked) {
       await admin.from("scan_logs").insert({

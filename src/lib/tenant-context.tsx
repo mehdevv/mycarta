@@ -1,6 +1,8 @@
 import { createContext, useContext } from "react";
+import { useLocation } from "wouter";
 import { useGetCurrentTenant, useGetTrialStatus, type Tenant, type TrialStatus } from "@/api/tenant";
 import { useAuth } from "@/lib/auth";
+import { isWorkerRoute } from "@/lib/auth-slots";
 
 interface TenantContextValue {
   tenant: Tenant | null;
@@ -21,8 +23,10 @@ const TenantContext = createContext<TenantContextValue>({
 });
 
 export function TenantProvider({ children }: { children: React.ReactNode }) {
-  const { businessUser, workerUser, activeSlot } = useAuth();
-  const user = activeSlot === "worker" ? workerUser : businessUser;
+  const [location] = useLocation();
+  const { businessUser, workerUser } = useAuth();
+  const onWorkerPortal = isWorkerRoute(location);
+  const user = onWorkerPortal ? workerUser : businessUser;
   const enabled =
     !!user &&
     user.role !== "super_admin" &&

@@ -75,17 +75,27 @@ async function getFunctionErrorMessage(
   }
 
   if (error instanceof FunctionsHttpError && error.context instanceof Response) {
-    if (error.context.status === 404) {
-      return `The "${name}" Edge Function is not deployed. Add it in Supabase Dashboard → Edge Functions.`;
-    }
     try {
       const body = await error.context.clone().json();
       if (body && typeof body === "object") {
         if ("error" in body && body.error) return String(body.error);
-        if ("message" in body && body.message) return String(body.message);
+        if ("message" in body && body.message) {
+          const message = String(body.message);
+          if (body.code === "NOT_FOUND" && error.context.status === 404) {
+            return `The "${name}" Edge Function is not deployed. Add it in Supabase Dashboard → Edge Functions.`;
+          }
+          return message;
+        }
       }
     } catch {
-      // Fall through to generic message.
+      // Fall through to status-based message.
+    }
+
+    if (error.context.status === 404) {
+      return `The "${name}" Edge Function is not deployed. Add it in Supabase Dashboard → Edge Functions.`;
+    }
+    if (error.context.status === 401) {
+      return `Session expired. Sign in again to use "${name}".`;
     }
   }
 
@@ -108,6 +118,51 @@ export async function invokeFunction<T>(
     throw new Error(`Empty response from "${name}"`);
   }
   return data as T;
+}
+
+/** Public edge functions (verify_jwt = false) — no owner/worker session required. */
+export async function invokePublicFunction<T>(
+  name: string,
+  body?: Record<string, unknown>,
+): Promise<T> {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase is not configured");
+  }
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/${name}`, {
+    method: "POST",
+    headers: {
+      apikey: supabaseAnonKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body ?? {}),
+  });
+
+  let payload: unknown = null;
+  try {
+    payload = await res.json();
+  } catch {
+    // ignore non-JSON bodies
+  }
+
+  if (!res.ok) {
+    if (payload && typeof payload === "object") {
+      if ("error" in payload && payload.error) throw new Error(String(payload.error));
+      if ("message" in payload && payload.message) throw new Error(String(payload.message));
+    }
+    if (res.status === 404) {
+      throw new Error(`The "${name}" Edge Function is not deployed. Add it in Supabase Dashboard → Edge Functions.`);
+    }
+    throw new Error(`Request failed (${res.status})`);
+  }
+
+  if (payload && typeof payload === "object" && "error" in payload && payload.error) {
+    throw new Error(String(payload.error));
+  }
+  if (payload == null) {
+    throw new Error(`Empty response from "${name}"`);
+  }
+  return payload as T;
 }
 
 export function extractQrToken(raw: string): string {

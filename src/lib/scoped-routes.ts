@@ -3,7 +3,7 @@ const CLIENT_SLUG_KEY = "carta-client-slug";
 
 export function rememberWorkerTenantSlug(slug: string) {
   try {
-    sessionStorage.setItem(WORKER_SLUG_KEY, slug);
+    localStorage.setItem(WORKER_SLUG_KEY, slug);
   } catch {
     // ignore
   }
@@ -11,7 +11,7 @@ export function rememberWorkerTenantSlug(slug: string) {
 
 export function getWorkerTenantSlug() {
   try {
-    return sessionStorage.getItem(WORKER_SLUG_KEY);
+    return localStorage.getItem(WORKER_SLUG_KEY);
   } catch {
     return null;
   }

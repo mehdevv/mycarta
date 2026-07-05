@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { useShopBranding } from "@/hooks/use-branding";
 import { rememberWorkerTenantSlug } from "@/lib/scoped-routes";
+import { setActiveAuthSlot } from "@/lib/auth-slots";
 import { Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
@@ -35,6 +36,10 @@ export default function EmployeeLogin() {
     resolver: zodResolver(loginSchema),
     defaultValues: { fullName: "", password: "" },
   });
+
+  useEffect(() => {
+    setActiveAuthSlot("worker");
+  }, []);
 
   useEffect(() => {
     if (tenantSlug) rememberWorkerTenantSlug(tenantSlug);
@@ -62,13 +67,14 @@ export default function EmployeeLogin() {
       return;
     }
     try {
-      const response = await loginMutation.mutateAsync({
+      await loginMutation.mutateAsync({
         data: {
           tenantSlug,
           fullName: values.fullName.trim(),
           password: values.password,
         },
       });
+      setActiveAuthSlot("worker");
       login("worker");
       toast({ title: "Bon retour !" });
     } catch (error: unknown) {
