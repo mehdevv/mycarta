@@ -20,7 +20,7 @@ import { hasSocialLinks } from "@/lib/social-links";
 import { cardPageUrl, normalizeCardCode } from "@/lib/card-code";
 import { nextMilestoneHintText, spendRewardHintText } from "@/lib/client-i18n";
 import { useClientI18n } from "@/hooks/use-client-i18n";
-import { useDailyScanLimit } from "@/hooks/use-daily-scan-limit";
+import { useClientQrStatus } from "@/hooks/use-client-qr-status";
 import { useLiteClientChrome } from "@/hooks/use-lite-client-chrome";
 import { useShopBranding, normalizeAssetUrl, resolveBusinessLogo } from "@/hooks/use-branding";
 import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
@@ -72,12 +72,7 @@ export default function CardView() {
   const refetchCard = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["client-card", code, tenantId] });
   }, [queryClient, code, tenantId]);
-  const scanLimit = useDailyScanLimit(
-    card?.scansToday,
-    card?.maxScansPerDay,
-    card?.scansResetAt,
-    refetchCard,
-  );
+  const qrStatusState = useClientQrStatus(card, t, refetchCard);
   const hasSocialBar = hasSocialLinks(card?.socialLinks);
   const [expandedRewardId, setExpandedRewardId] = useState<string | null>(null);
 
@@ -286,9 +281,7 @@ export default function CardView() {
               spendProgressLabel={t("spendProgress")}
               footerHint={footerHint}
               animated={!liteChrome}
-              scanLimitActive={scanLimit.active}
-              scanLimitCountdown={scanLimit.countdownLabel}
-              scanLimitLabel={t("scanLimitCooldown")}
+              qrBlockingStatus={qrStatusState.blockingStatus}
             />
           </motion.div>
 

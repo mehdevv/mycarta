@@ -6,7 +6,7 @@ export const FRAUD_REASON_LABELS: Record<string, string> = {
   daily_limit: "Maximum daily order limit reached",
   self_scan: "Employee cannot scan their own card",
   // Legacy block reasons (no longer enforced)
-  scan_cooldown: "Card scanned too recently (legacy)",
+  scan_cooldown: "Card scanned too recently — wait before scanning again",
   too_soon: "Same employee scanned too recently (legacy)",
   rapid_scan: "Customer scanned again too soon (legacy)",
 };

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { Clock, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import type { ClientQrBlockingStatus } from "@/lib/client-qr-status";
 import ClientStampGrid from "@/components/client/stamp-grid";
 import {
   cardTemplateClassName,
@@ -39,9 +41,7 @@ type CardTemplateBodyProps = {
   compact?: boolean;
   animated?: boolean;
   showWatermark?: boolean;
-  scanLimitActive?: boolean;
-  scanLimitCountdown?: string;
-  scanLimitLabel?: string;
+  qrBlockingStatus?: ClientQrBlockingStatus | null;
 };
 
 function ProgressBar({
@@ -104,29 +104,62 @@ function QrBlock({
   qrSize,
   className,
   animated,
-  scanLimitActive,
-  scanLimitCountdown,
-  scanLimitLabel,
+  qrBlockingStatus,
 }: {
   qrValue: string;
   qrSize: number;
   className?: string;
   animated?: boolean;
-  scanLimitActive?: boolean;
-  scanLimitCountdown?: string;
-  scanLimitLabel?: string;
+  qrBlockingStatus?: ClientQrBlockingStatus | null;
 }) {
+  const blocked = Boolean(qrBlockingStatus);
+
+  const overlayIcon =
+    qrBlockingStatus?.variant === "pending" ? (
+      <Loader2 className="h-5 w-5 text-primary animate-spin" />
+    ) : (
+      <Clock className="h-5 w-5 text-amber-700" />
+    );
+
+  const overlayIconBg =
+    qrBlockingStatus?.variant === "pending"
+      ? "bg-primary/10"
+      : qrBlockingStatus?.variant === "cooldown"
+        ? "bg-orange-100"
+        : "bg-amber-100";
+
   const inner = (
     <div className={`card-tpl-qr-box relative ${className ?? ""}`}>
-      <div className={scanLimitActive ? "blur-md scale-[0.98] opacity-60 pointer-events-none select-none" : undefined}>
+      <div
+        className={
+          blocked
+            ? "blur-sm scale-[0.99] opacity-80 pointer-events-none select-none"
+            : undefined
+        }
+      >
         <QRCodeSVG value={qrValue} size={qrSize} level={animated ? "H" : "M"} fgColor="#111" />
       </div>
-      {scanLimitActive && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/90 backdrop-blur-md px-3 text-center">
-          <p className="text-xs font-medium text-muted-foreground leading-snug">{scanLimitLabel}</p>
-          <p className="text-2xl font-bold tabular-nums mt-1.5 text-foreground tracking-tight">
-            {scanLimitCountdown}
+      {qrBlockingStatus && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/75 backdrop-blur-sm px-3 py-4 text-center shadow-inner">
+          <div
+            className={`flex h-10 w-10 items-center justify-center rounded-full mb-2 ${overlayIconBg}`}
+          >
+            {overlayIcon}
+          </div>
+          <p className="text-xs font-semibold text-foreground leading-snug">
+            {qrBlockingStatus.reason}
           </p>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground mt-2">
+            {qrBlockingStatus.countdownLabel}
+          </p>
+          <p className="text-3xl font-bold tabular-nums mt-0.5 text-foreground tracking-tight">
+            {qrBlockingStatus.countdown}
+          </p>
+          {qrBlockingStatus.hint && (
+            <p className="text-[11px] text-muted-foreground mt-2 leading-snug max-w-[14rem]">
+              {qrBlockingStatus.hint}
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -193,9 +226,7 @@ export default function CardTemplateBody({
   compact = false,
   animated = false,
   showWatermark = false,
-  scanLimitActive = false,
-  scanLimitCountdown,
-  scanLimitLabel,
+  qrBlockingStatus = null,
 }: CardTemplateBodyProps) {
   const showStamps = stampsEnabled ?? (rewardMode === "stamps" || rewardMode === "both");
   const showSpend = spendEnabled ?? (rewardMode === "spend" || rewardMode === "both");
@@ -331,9 +362,7 @@ export default function CardTemplateBody({
             qrValue={qrValue}
             qrSize={size}
             animated={animated}
-            scanLimitActive={scanLimitActive}
-            scanLimitCountdown={scanLimitCountdown}
-            scanLimitLabel={scanLimitLabel}
+            qrBlockingStatus={qrBlockingStatus}
           />
         </div>
 

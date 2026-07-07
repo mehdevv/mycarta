@@ -156,6 +156,7 @@ export function mapClientCard(raw: Record<string, unknown>) {
             scannedAt: String(s.scannedAt ?? ""),
             status: String(s.status ?? ""),
             stampsAdded: Number(s.stampsAdded ?? 0),
+            spendAddedDzd: Number(s.spendAddedDzd ?? 0),
           };
         })
       : [],

@@ -123,7 +123,7 @@ export interface ClientCard {
   showCartaWatermark?: boolean;
   socialLinks?: SocialLinks;
   rewards?: ClientCardReward[];
-  recentScans?: { scannedAt: string; status: string; stampsAdded: number }[];
+  recentScans?: { scannedAt: string; status: string; stampsAdded: number; spendAddedDzd?: number }[];
   maxScansPerDay?: number;
   scansToday?: number;
   scansResetAt?: string | null;

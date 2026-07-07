@@ -340,6 +340,32 @@ Deno.serve(async (req) => {
       return jsonResponse(blockedResponse("daily_limit", client, settings));
     }
 
+    const SCAN_COOLDOWN_MS = 60_000;
+    const { data: lastEligibleScan } = await admin
+      .from("scan_logs")
+      .select("scanned_at")
+      .eq("client_id", client.id)
+      .in("status", ["approved", "pending"])
+      .order("scanned_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastEligibleScan?.scanned_at) {
+      const elapsed = Date.now() - new Date(lastEligibleScan.scanned_at as string).getTime();
+      if (elapsed < SCAN_COOLDOWN_MS) {
+        await admin.from("scan_logs").insert({
+          tenant_id: tenantId,
+          client_id: client.id,
+          worker_id: worker.id,
+          scan_type: "purchase",
+          status: "blocked_fraud",
+          block_reason: "scan_cooldown",
+          stamps_added: 0,
+        });
+        return jsonResponse(blockedResponse("scan_cooldown", client, settings));
+      }
+    }
+
     const flags = resolveProgramFlags(settings as Record<string, unknown> | null);
     if (!flags.stampsEnabled && !flags.spendEnabled) {
       return jsonResponse({ error: "Loyalty program not configured" }, 400);
