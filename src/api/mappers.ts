@@ -157,6 +157,7 @@ export function mapClientCard(raw: Record<string, unknown>) {
             status: String(s.status ?? ""),
             stampsAdded: Number(s.stampsAdded ?? 0),
             spendAddedDzd: Number(s.spendAddedDzd ?? 0),
+            blockReason: s.blockReason ? String(s.blockReason) : undefined,
           };
         })
       : [],

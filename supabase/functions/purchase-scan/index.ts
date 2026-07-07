@@ -340,29 +340,30 @@ Deno.serve(async (req) => {
       return jsonResponse(blockedResponse("daily_limit", client, settings));
     }
 
-    const SCAN_COOLDOWN_MS = 60_000;
-    const { data: lastEligibleScan } = await admin
+    const SAME_WORKER_COOLDOWN_MS = 10_000;
+    const { data: lastWorkerScan } = await admin
       .from("scan_logs")
       .select("scanned_at")
       .eq("client_id", client.id)
+      .eq("worker_id", worker.id)
       .in("status", ["approved", "pending"])
       .order("scanned_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (lastEligibleScan?.scanned_at) {
-      const elapsed = Date.now() - new Date(lastEligibleScan.scanned_at as string).getTime();
-      if (elapsed < SCAN_COOLDOWN_MS) {
+    if (lastWorkerScan?.scanned_at) {
+      const elapsed = Date.now() - new Date(lastWorkerScan.scanned_at as string).getTime();
+      if (elapsed < SAME_WORKER_COOLDOWN_MS) {
         await admin.from("scan_logs").insert({
           tenant_id: tenantId,
           client_id: client.id,
           worker_id: worker.id,
           scan_type: "purchase",
           status: "blocked_fraud",
-          block_reason: "scan_cooldown",
+          block_reason: "too_soon",
           stamps_added: 0,
         });
-        return jsonResponse(blockedResponse("scan_cooldown", client, settings));
+        return jsonResponse(blockedResponse("too_soon", client, settings));
       }
     }
 

@@ -17,6 +17,7 @@ export type ClientRecentScan = {
   status: string;
   stampsAdded: number;
   spendAddedDzd?: number;
+  blockReason?: string;
 };
 
 const PENDING_MAX_AGE_MS = 30 * 60 * 1000;
@@ -114,7 +115,12 @@ export function resolveClientQrBlockingStatus(args: {
     };
   }
 
-  const cooldownSec = scanCooldownSecondsLeft(latest?.scannedAt, latest?.status, now);
+  const cooldownSec = scanCooldownSecondsLeft(
+    latest?.scannedAt,
+    latest?.status,
+    latest?.blockReason,
+    now,
+  );
   if (cooldownSec > 0) {
     return {
       variant: "cooldown",
