@@ -20,7 +20,64 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { tenantSlug, fullName, password } = await req.json();
+    const { tenantSlug, fullName, password, workerQrToken } = await req.json();
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    if (workerQrToken && typeof workerQrToken === "string") {
+      const token = workerQrToken.trim();
+      if (!/^[0-9a-f-]{36}$/i.test(token)) {
+        return jsonResponse({ error: "Invalid login QR code" }, 400);
+      }
+
+      const { data: worker } = await admin
+        .from("profiles")
+        .select("id, email, is_active, tenant_id")
+        .eq("worker_qr_token", token)
+        .eq("role", "worker")
+        .maybeSingle();
+
+      if (!worker?.email || !worker.is_active) {
+        return jsonResponse({ error: "Invalid or inactive worker QR code" }, 401);
+      }
+
+      if (tenantSlug && typeof tenantSlug === "string") {
+        const { data: tenant } = await admin
+          .from("tenants")
+          .select("id")
+          .eq("slug", tenantSlug.trim())
+          .maybeSingle();
+        if (!tenant || tenant.id !== worker.tenant_id) {
+          return jsonResponse({ error: "This QR code belongs to another shop" }, 401);
+        }
+      }
+
+      const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+        type: "magiclink",
+        email: worker.email,
+      });
+
+      if (linkError || !linkData?.properties?.hashed_token) {
+        return jsonResponse({ error: "Could not start worker session" }, 500);
+      }
+
+      const { data: sessionData, error: sessionError } = await admin.auth.verifyOtp({
+        token_hash: linkData.properties.hashed_token,
+        type: "email",
+      });
+
+      if (sessionError || !sessionData.session) {
+        return jsonResponse({ error: "Could not start worker session" }, 500);
+      }
+
+      return jsonResponse({
+        accessToken: sessionData.session.access_token,
+        refreshToken: sessionData.session.refresh_token,
+      });
+    }
+
     const trimmedName = typeof fullName === "string" ? fullName.trim() : "";
 
     if (!tenantSlug || typeof tenantSlug !== "string") {
@@ -32,11 +89,6 @@ Deno.serve(async (req) => {
     if (!password || typeof password !== "string") {
       return jsonResponse({ error: "password is required" }, 400);
     }
-
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
 
     const { data: tenant } = await admin
       .from("tenants")

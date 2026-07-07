@@ -101,6 +101,7 @@ export interface Reward {
 export interface ClientCard {
   businessName: string;
   clientName: string;
+  clientPhone?: string | null;
   primaryColor: string;
   cardUrl: string | null;
   cardTemplateUrl: string | null;
@@ -123,6 +124,9 @@ export interface ClientCard {
   socialLinks?: SocialLinks;
   rewards?: ClientCardReward[];
   recentScans?: { scannedAt: string; status: string; stampsAdded: number }[];
+  maxScansPerDay?: number;
+  scansToday?: number;
+  scansResetAt?: string | null;
 }
 
 export interface ClientCardReward {

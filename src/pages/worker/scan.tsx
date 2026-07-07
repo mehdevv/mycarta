@@ -2,13 +2,16 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { usePurchaseScan, useConfirmPurchaseScan, useRedeemRewardScan } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { scanResultVariants, vibrate } from "@/lib/motion";
 import { parseScannedQr } from "@/lib/supabase";
 import { normalizeCardCode, isCardCode } from "@/lib/card-code";
 import { FRAUD_REASON_LABELS } from "@/api/fraud";
-import { CheckCircle, XCircle, Gift, ArrowLeft, Minus, Plus, ScanLine, CalendarClock, Loader2 } from "lucide-react";
+import { getWorkerScannerMode, setWorkerScannerMode } from "@/lib/worker-scanner-mode";
+import { CheckCircle, XCircle, Gift, ArrowLeft, Minus, Plus, ScanLine, CalendarClock, Loader2, ChevronDown } from "lucide-react";
 import { useLocation } from "wouter";
 
 const SCANNER_ELEMENT_ID = "qr-scanner-region";
@@ -94,6 +97,26 @@ function fraudLabel(reason: string | null) {
   return FRAUD_REASON_LABELS[reason] ?? reason.replace(/_/g, " ");
 }
 
+function shouldShowFullscreenPurchaseResult(result: ScanResult): boolean {
+  if (!result.approved) return true;
+  return false;
+}
+
+function purchaseSuccessMessage(result: ScanResult): string {
+  if (result.rewardTriggered) {
+    return `${result.clientName ?? "Customer"} — ${result.rewardDescription ?? "Reward unlocked"}`;
+  }
+  const parts: string[] = [];
+  if (result.clientName) parts.push(result.clientName);
+  if (result.spendEnabled && result.spendAddedDzd > 0) {
+    parts.push(`+${result.spendAddedDzd.toLocaleString("fr-DZ")} ${result.currency}`);
+  }
+  if (result.stampsEnabled) {
+    parts.push(`${result.currentStamps}/${result.stampThreshold} stamps`);
+  }
+  return parts.join(" · ") || "Scan approved";
+}
+
 export default function WorkerScan() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -107,15 +130,20 @@ export default function WorkerScan() {
   const [amountDzd, setAmountDzd] = useState("");
   const [manualCode, setManualCode] = useState("");
   const [cameraStarting, setCameraStarting] = useState(false);
+  const [scannerMode, setScannerMode] = useState(getWorkerScannerMode);
   const html5QrcodeRef = useRef<InstanceType<typeof import("html5-qrcode").Html5Qrcode> | null>(null);
   const processingRef = useRef(false);
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fastResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
   const mutateScanRef = useRef(purchaseScan.mutateAsync);
   const mutateRedeemRef = useRef(redeemRewardScan.mutateAsync);
   const toastRef = useRef(toast);
+  const scannerModeRef = useRef(scannerMode);
   mutateScanRef.current = purchaseScan.mutateAsync;
   mutateRedeemRef.current = redeemRewardScan.mutateAsync;
   toastRef.current = toast;
+  scannerModeRef.current = scannerMode;
 
   const stopScanner = useCallback(async () => {
     const scanner = html5QrcodeRef.current;
@@ -133,20 +161,116 @@ export default function WorkerScan() {
     }
   }, []);
 
-  const handleReset = useCallback(async () => {
+  const resumeScanning = useCallback(() => {
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    if (fastResetTimerRef.current) clearTimeout(fastResetTimerRef.current);
     processingRef.current = false;
-    await stopScanner();
     setStep("scan");
     setResult(null);
     setRedeemResult(null);
     setProductQtys({});
     setAmountDzd("");
     setManualCode("");
-    setCameraStarting(false);
+  }, []);
+
+  const handleReset = useCallback(async () => {
+    if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    if (fastResetTimerRef.current) clearTimeout(fastResetTimerRef.current);
+    processingRef.current = false;
+    if (!scannerModeRef.current) {
+      await stopScanner();
+      setCameraStarting(false);
+    }
+    setStep("scan");
+    setResult(null);
+    setRedeemResult(null);
+    setProductQtys({});
+    setAmountDzd("");
+    setManualCode("");
   }, [stopScanner]);
 
+  const scheduleFastReset = useCallback(() => {
+    if (fastResetTimerRef.current) clearTimeout(fastResetTimerRef.current);
+    fastResetTimerRef.current = setTimeout(() => {
+      void handleReset();
+    }, 900);
+  }, [handleReset]);
+
+  const finishPurchaseResult = useCallback(
+    (r: ScanResult) => {
+      if (scannerModeRef.current) {
+        if (!r.approved) {
+          const title =
+            r.reason === "daily_limit" ? "Daily limit reached" : "Scan blocked";
+          const description =
+            r.reason === "daily_limit"
+              ? `${r.clientName ?? "Customer"} — max ${r.maxScansPerDay ?? 2} orders today`
+              : `${r.clientName ?? "Customer"} — ${fraudLabel(r.reason)}`;
+          toastRef.current({ title, description, variant: "destructive" });
+          vibrate([100, 50, 100]);
+        } else {
+          const title = r.rewardTriggered ? "Reward unlocked!" : "Approved";
+          toastRef.current({ title, description: purchaseSuccessMessage(r) });
+          vibrate(50);
+        }
+        scheduleFastReset();
+        return;
+      }
+      if (!shouldShowFullscreenPurchaseResult(r)) {
+        const title = r.rewardTriggered ? "Reward unlocked!" : "Approved";
+        toastRef.current({ title, description: purchaseSuccessMessage(r) });
+        scheduleFastReset();
+        return;
+      }
+      setResult(r);
+      setStep("result");
+    },
+    [scheduleFastReset],
+  );
+
+  const finishRedeemResult = useCallback(
+    (redeem: RedeemResult) => {
+      if (scannerModeRef.current) {
+        if (redeem.approved) {
+          toastRef.current({
+            title: "Reward redeemed",
+            description: `${redeem.clientName ?? "Customer"} — ${redeem.rewardDescription}`,
+          });
+          vibrate([50, 30, 50]);
+        } else {
+          const title =
+            redeem.reason === "already_redeemed" ? "Already redeemed" : "Redeem failed";
+          toastRef.current({
+            title,
+            description: `${redeem.clientName ?? "Customer"} — ${redeem.rewardDescription}`,
+            variant: "destructive",
+          });
+          vibrate([100, 50, 100]);
+        }
+        scheduleFastReset();
+        return;
+      }
+      if (redeem.approved) {
+        toastRef.current({
+          title: "Reward redeemed",
+          description: `${redeem.clientName ?? "Customer"} — ${redeem.rewardDescription}`,
+        });
+        scheduleFastReset();
+        return;
+      }
+      setRedeemResult(redeem);
+      setStep("redeem-result");
+    },
+    [scheduleFastReset],
+  );
+
+  const toggleScannerMode = useCallback((enabled: boolean) => {
+    setScannerMode(enabled);
+    setWorkerScannerMode(enabled);
+  }, []);
+
   useEffect(() => {
+    if (scannerMode) return;
     if (step !== "result" && step !== "redeem-result") return;
     if (step === "result" && !result) return;
     if (step === "redeem-result" && !redeemResult) return;
@@ -156,7 +280,7 @@ export default function WorkerScan() {
     return () => {
       if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
     };
-  }, [step, result, redeemResult, handleReset]);
+  }, [step, result, redeemResult, handleReset, scannerMode]);
 
   const processScanPayload = useCallback(
     async (raw: string, options?: { stopCamera?: boolean }) => {
@@ -181,16 +305,14 @@ export default function WorkerScan() {
           if (!redeemRes || typeof redeemRes !== "object") {
             throw new Error("Invalid response from server");
           }
-          setRedeemResult({
+          const redeemPayload: RedeemResult = {
             approved: Boolean(redeemRes.approved),
             reason: (redeemRes.reason as string | null) ?? null,
             clientName: (redeemRes.clientName as string | null) ?? null,
             rewardDescription: String(redeemRes.rewardDescription ?? "Reward"),
-          });
-          setStep("redeem-result");
+          };
           setManualCode("");
-          if (redeemRes.approved) vibrate([50, 30, 50]);
-          else vibrate([100, 50, 100]);
+          finishRedeemResult(redeemPayload);
           return;
         }
 
@@ -209,18 +331,20 @@ export default function WorkerScan() {
           ?? ((r.needsProducts || r.needsAmount) && r.pendingScanId),
         );
 
-        if (r.approved && !awaitingWorkerInput) vibrate(50);
-        else if (!r.approved && !awaitingWorkerInput) vibrate([100, 50, 100]);
-
         if (r.needsProducts && r.pendingScanId) {
           setProductQtys({});
           setStep("products");
-        } else if (r.needsAmount && r.pendingScanId) {
+          return;
+        }
+        if (r.needsAmount && r.pendingScanId) {
           setAmountDzd("");
           setStep("amount");
-        } else {
-          setStep("result");
+          return;
         }
+
+        if (r.approved && !awaitingWorkerInput) vibrate(50);
+        else if (!r.approved && !awaitingWorkerInput) vibrate([100, 50, 100]);
+        finishPurchaseResult(r);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Scan failed";
         toastRef.current({
@@ -229,10 +353,10 @@ export default function WorkerScan() {
           variant: "destructive",
         });
         processingRef.current = false;
-        setStep("scan");
+        if (!scannerModeRef.current) setStep("scan");
       }
     },
-    [stopScanner],
+    [stopScanner, finishRedeemResult, finishPurchaseResult],
   );
 
   const handleManualSubmit = async () => {
@@ -264,8 +388,10 @@ export default function WorkerScan() {
     await processScanPayload(code, { stopCamera: true });
   };
 
+  const cameraEnabled = scannerMode || step === "scan";
+
   useEffect(() => {
-    if (step !== "scan") {
+    if (!cameraEnabled) {
       void stopScanner();
       return;
     }
@@ -284,11 +410,18 @@ export default function WorkerScan() {
         const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID);
         html5QrcodeRef.current = scanner;
 
+        const qrbox = scannerMode
+          ? (viewfinderWidth: number, viewfinderHeight: number) => {
+              const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.72);
+              return { width: size, height: size };
+            }
+          : { width: 250, height: 250 };
+
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+          { fps: scannerMode ? 15 : 10, qrbox },
           async (decodedText: string) => {
-            await processScanPayload(decodedText, { stopCamera: true });
+            await processScanPayload(decodedText, { stopCamera: !scannerModeRef.current });
           },
           () => {},
         );
@@ -314,7 +447,14 @@ export default function WorkerScan() {
       window.clearTimeout(timer);
       void stopScanner();
     };
-  }, [step, stopScanner, processScanPayload]);
+  }, [cameraEnabled, scannerMode, stopScanner, processScanPayload]);
+
+  useEffect(() => {
+    if (scannerMode && step === "amount") {
+      const t = window.setTimeout(() => amountInputRef.current?.focus(), 200);
+      return () => window.clearTimeout(t);
+    }
+  }, [scannerMode, step]);
 
   const handleConfirmAmount = async () => {
     if (!result?.pendingScanId) return;
@@ -337,8 +477,8 @@ export default function WorkerScan() {
         setAmountDzd("");
         setStep("amount");
       } else {
-        setStep("result");
         if (!stillPending) vibrate(50);
+        finishPurchaseResult(merged);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Confirm failed";
@@ -365,14 +505,170 @@ export default function WorkerScan() {
         setAmountDzd("");
         setStep("amount");
       } else {
-        setStep("result");
         if (!stillPending) vibrate(50);
+        finishPurchaseResult(merged);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Confirm failed";
       toast({ title: "Confirm failed", description: message, variant: "destructive" });
     }
   };
+
+  if (scannerMode) {
+    const products = result?.products ?? [];
+    const showInputSheet = (step === "products" || step === "amount") && result;
+
+    return (
+      <div className="fixed inset-0 z-[100] flex flex-col bg-black">
+        <div
+          id={SCANNER_ELEMENT_ID}
+          className="absolute inset-0 [&_video]:!h-full [&_video]:!w-full [&_video]:!object-cover [&>div]:!border-none"
+        />
+
+        {cameraStarting && (
+          <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/80">
+            <Loader2 className="h-10 w-10 animate-spin text-white" />
+          </div>
+        )}
+
+        {!showInputSheet && (
+          <div className="absolute inset-0 z-[1] pointer-events-none flex items-center justify-center">
+            <div className="w-[72vw] max-w-md aspect-square rounded-2xl border-2 border-white/40 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]">
+              <motion.div
+                className="absolute left-3 right-3 h-0.5 bg-white/70"
+                animate={{ top: ["12%", "88%", "12%"] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="relative z-10 flex items-center justify-center px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 bg-gradient-to-b from-black/75 to-transparent">
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-11 gap-2 rounded-full bg-black/40 text-white hover:bg-black/60 hover:text-white"
+            onClick={() => {
+              toggleScannerMode(false);
+              if (step !== "scan") resumeScanning();
+            }}
+          >
+            <ChevronDown className="h-5 w-5" />
+            Exit scanner mode
+          </Button>
+        </div>
+
+        {showInputSheet && (
+          <div className="relative z-10 mt-auto flex max-h-[58dvh] flex-col rounded-t-3xl bg-background shadow-2xl">
+            <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30" />
+            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {step === "products" ? "Products" : "Purchase amount"}
+                </p>
+                <p className="truncate text-lg font-bold">{result.clientName ?? "Customer"}</p>
+              </div>
+              <Button type="button" variant="ghost" size="sm" onClick={() => resumeScanning()}>
+                Skip
+              </Button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+              {step === "amount" ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Current:{" "}
+                    <span className="font-semibold text-foreground">
+                      {result.currentCycleSpendDzd.toLocaleString("fr-DZ")} /{" "}
+                      {result.spendThresholdDzd.toLocaleString("fr-DZ")} {result.currency}
+                    </span>
+                  </p>
+                  <input
+                    ref={amountInputRef}
+                    type="number"
+                    min={1}
+                    step={50}
+                    inputMode="numeric"
+                    placeholder={`Amount (${result.currency})`}
+                    value={amountDzd}
+                    onChange={(e) => setAmountDzd(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void handleConfirmAmount();
+                    }}
+                    className="w-full rounded-xl border border-input bg-background px-4 py-3.5 text-xl font-semibold"
+                  />
+                </div>
+              ) : products.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No products in catalog — confirm to add the stamp.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {products.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{p.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {Number(p.price).toLocaleString("fr-DZ")} DZD
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() =>
+                            setProductQtys((q) => ({ ...q, [p.id]: Math.max(0, (q[p.id] ?? 0) - 1) }))
+                          }
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-5 text-center font-mono text-sm font-semibold">
+                          {productQtys[p.id] ?? 0}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() =>
+                            setProductQtys((q) => ({ ...q, [p.id]: (q[p.id] ?? 0) + 1 }))
+                          }
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="shrink-0 space-y-2 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <Button
+                type="button"
+                className="h-12 w-full text-base"
+                disabled={confirmScan.isPending}
+                onClick={() =>
+                  void (step === "amount" ? handleConfirmAmount() : handleConfirmProducts())
+                }
+              >
+                {confirmScan.isPending
+                  ? "Saving…"
+                  : step === "amount"
+                    ? "Validate & next customer"
+                    : "Confirm & next customer"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (step === "scan") {
     return (
@@ -381,7 +677,27 @@ export default function WorkerScan() {
           <Button variant="ghost" size="icon" onClick={() => navigate("/")} aria-label="Back to worker home">
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h2 className="text-xl font-bold">Scan QR Code</h2>
+          <h2 className="text-xl font-bold flex-1">Scan QR Code</h2>
+          {scannerMode && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-1 text-xs font-semibold">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Scanner
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-3 mb-4 px-1 py-2 rounded-xl border border-border/60 bg-muted/30">
+          <div className="min-w-0">
+            <Label htmlFor="scanner-mode" className="text-sm font-medium">
+              Scanner mode
+            </Label>
+            <p className="text-xs text-muted-foreground">Scan → amount → next customer</p>
+          </div>
+          <Switch
+            id="scanner-mode"
+            checked={scannerMode}
+            onCheckedChange={toggleScannerMode}
+          />
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center gap-5 pb-4">

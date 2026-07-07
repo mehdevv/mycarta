@@ -4,9 +4,11 @@ import { getSupabaseClient, supabase } from "@/lib/supabase";
 export const FRAUD_REASON_LABELS: Record<string, string> = {
   blocked: "Customer card is blocked",
   daily_limit: "Maximum daily order limit reached",
-  too_soon: "Same employee scanned too recently",
-  rapid_scan: "Customer scanned again within 60 seconds",
   self_scan: "Employee cannot scan their own card",
+  // Legacy block reasons (no longer enforced)
+  scan_cooldown: "Card scanned too recently (legacy)",
+  too_soon: "Same employee scanned too recently (legacy)",
+  rapid_scan: "Customer scanned again too soon (legacy)",
 };
 
 export function useListFraudEvents(params?: { reviewed?: boolean }) {

@@ -12,7 +12,6 @@ const tabs = [
   { path: "/", label: "Home", icon: Home },
   { path: "/scan", label: "Scan", icon: QrCode, primary: true },
   { path: "/history", label: "History", icon: History },
-  { path: "/my-qr", label: "My QR", icon: QrCode },
 ];
 
 function workerPath(path: string) {

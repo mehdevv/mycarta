@@ -316,27 +316,6 @@ Deno.serve(async (req) => {
       return jsonResponse(blockedResponse("self_scan", client, settings));
     }
 
-    // FR-05: rapid sequential scans within 60 seconds by any employee
-    const sixtySecAgo = new Date(Date.now() - 60 * 1000).toISOString();
-    const { count: rapidScans } = await admin
-      .from("scan_logs")
-      .select("*", { count: "exact", head: true })
-      .eq("client_id", client.id)
-      .gte("scanned_at", sixtySecAgo);
-
-    if ((rapidScans ?? 0) > 0) {
-      await admin.from("scan_logs").insert({
-        tenant_id: tenantId,
-        client_id: client.id,
-        worker_id: worker.id,
-        scan_type: "purchase",
-        status: "blocked_fraud",
-        block_reason: "rapid_scan",
-        stamps_added: 0,
-      });
-      return jsonResponse(blockedResponse("rapid_scan", client, settings));
-    }
-
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
@@ -359,27 +338,6 @@ Deno.serve(async (req) => {
         stamps_added: 0,
       });
       return jsonResponse(blockedResponse("daily_limit", client, settings));
-    }
-
-    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const { count: recentDup } = await admin
-      .from("scan_logs")
-      .select("*", { count: "exact", head: true })
-      .eq("client_id", client.id)
-      .eq("worker_id", worker.id)
-      .gte("scanned_at", fiveMinAgo);
-
-    if ((recentDup ?? 0) > 0) {
-      await admin.from("scan_logs").insert({
-        tenant_id: tenantId,
-        client_id: client.id,
-        worker_id: worker.id,
-        scan_type: "purchase",
-        status: "blocked_fraud",
-        block_reason: "too_soon",
-        stamps_added: 0,
-      });
-      return jsonResponse(blockedResponse("too_soon", client, settings));
     }
 
     const flags = resolveProgramFlags(settings as Record<string, unknown> | null);

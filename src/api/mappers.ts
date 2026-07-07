@@ -112,6 +112,7 @@ export function mapClientCard(raw: Record<string, unknown>) {
   return {
     businessName: String(r.businessName ?? ""),
     clientName: String(r.clientName ?? ""),
+    clientPhone: (r.clientPhone as string | null) ?? null,
     primaryColor: String(r.primaryColor ?? "#1A56DB"),
     cardUrl: (r.cardUrl as string) ?? null,
     cardTemplateUrl: (r.cardTemplateUrl as string) ?? null,
@@ -158,6 +159,9 @@ export function mapClientCard(raw: Record<string, unknown>) {
           };
         })
       : [],
+    maxScansPerDay: Number(r.maxScansPerDay ?? 2),
+    scansToday: Number(r.scansToday ?? 0),
+    scansResetAt: (r.scansResetAt as string | null) ?? null,
   };
 }
 

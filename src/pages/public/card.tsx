@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRoute, Link } from "wouter";
 import { useGetClientCard, useGetTenantBySlug } from "@/api";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Gift, ChevronRight, Clock } from "lucide-react";
+import { CheckCircle, Gift, ChevronDown, Clock } from "lucide-react";
 import { parseStampMilestones } from "@/lib/stamp-milestones";
 import { spendProgressPercent } from "@/lib/spend-rewards";
 import { formatDzd } from "@/lib/pricing";
@@ -13,11 +14,13 @@ import BrandLogo from "@/components/brand/mascot";
 import CardTemplateBody from "@/components/fidelity/card-template-body";
 import CardLinkBar from "@/components/client/card-link-bar";
 import CardSocialBar from "@/components/client/card-social-bar";
+import PendingRewardQr from "@/components/client/pending-reward-qr";
 import { CLIENT_SOCIAL_SHEET_HEIGHT } from "@/components/client/social-brand-icons";
 import { hasSocialLinks } from "@/lib/social-links";
 import { cardPageUrl, normalizeCardCode } from "@/lib/card-code";
 import { nextMilestoneHintText, spendRewardHintText } from "@/lib/client-i18n";
 import { useClientI18n } from "@/hooks/use-client-i18n";
+import { useDailyScanLimit } from "@/hooks/use-daily-scan-limit";
 import { useLiteClientChrome } from "@/hooks/use-lite-client-chrome";
 import { useShopBranding, normalizeAssetUrl, resolveBusinessLogo } from "@/hooks/use-branding";
 import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
@@ -36,7 +39,6 @@ export default function CardView() {
   const code = (slugParams?.code ?? legacyParams?.code)
     ? normalizeCardCode(slugParams?.code ?? legacyParams?.code ?? "")
     : "";
-  const cardRef = useRef<HTMLDivElement>(null);
   const cardSlug = tenantSlug || getClientTenantSlug() || "";
   const watermarkDismissed = useCartaWatermarkDismissed(cardSlug);
 
@@ -66,11 +68,29 @@ export default function CardView() {
     query: { enabled: !!code },
     tenantId,
   });
+  const queryClient = useQueryClient();
+  const refetchCard = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ["client-card", code, tenantId] });
+  }, [queryClient, code, tenantId]);
+  const scanLimit = useDailyScanLimit(
+    card?.scansToday,
+    card?.maxScansPerDay,
+    card?.scansResetAt,
+    refetchCard,
+  );
   const hasSocialBar = hasSocialLinks(card?.socialLinks);
+  const [expandedRewardId, setExpandedRewardId] = useState<string | null>(null);
 
   useEffect(() => {
     if (card?.pendingRewardId && !liteChrome) vibrate([30, 50, 30]);
   }, [card?.pendingRewardId, liteChrome]);
+
+  useEffect(() => {
+    if (!card?.rewards) return;
+    const list = Array.isArray(card.rewards) ? card.rewards : [];
+    const firstPending = list.find((r) => !r.redeemedAt)?.id ?? null;
+    if (firstPending) setExpandedRewardId(firstPending);
+  }, [card?.cardCode, card?.rewards]);
 
   if (!code) {
     return (
@@ -216,13 +236,31 @@ export default function CardView() {
             variants={liteChrome ? undefined : headerItem}
             className="shrink-0"
           >
-            <CardLinkBar code={card.cardCode} primaryColor={card.primaryColor} />
+            <CardLinkBar
+              code={card.cardCode}
+              primaryColor={card.primaryColor}
+              liteChrome={liteChrome}
+              exportData={{
+                businessName: card.businessName,
+                clientName: card.clientName,
+                secondaryColor: secondary,
+                qrValue: cardPageUrl(card.cardCode),
+                cardBgUrl: cardBg,
+                logoUrl: businessLogo ?? branding.logoUrl,
+                stampsEnabled,
+                stampThreshold: card.stampThreshold,
+                currentStamps: card.currentCycleStamps,
+                milestones,
+                progressLabel: t("progress"),
+                hint: stampHint,
+                footerHint,
+              }}
+            />
           </motion.div>
         </motion.header>
 
         <div className="px-5 flex-1">
           <motion.div
-            ref={cardRef}
             {...(liteChrome
               ? {}
               : { variants: cardReveal, initial: "initial", animate: "animate" })}
@@ -248,6 +286,9 @@ export default function CardView() {
               spendProgressLabel={t("spendProgress")}
               footerHint={footerHint}
               animated={!liteChrome}
+              scanLimitActive={scanLimit.active}
+              scanLimitCountdown={scanLimit.countdownLabel}
+              scanLimitLabel={t("scanLimitCooldown")}
             />
           </motion.div>
 
@@ -259,39 +300,7 @@ export default function CardView() {
               <div className="space-y-2">
                 {rewards.map((reward, i) => {
                   const isPending = !reward.redeemedAt;
-                  const inner = (
-                    <>
-                      <div
-                        className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
-                          isPending ? "bg-amber-400" : "bg-emerald-100"
-                        }`}
-                      >
-                        {isPending ? (
-                          <Gift className="h-5 w-5 text-white" />
-                        ) : (
-                          <CheckCircle className="h-5 w-5 text-emerald-600" />
-                        )}
-                      </div>
-                      <div className="flex-1 text-left min-w-0">
-                        <p className="font-semibold text-foreground truncate">{reward.rewardDescription}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(reward.createdAt).toLocaleDateString(dateLocale, {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                          {" · "}
-                          {isPending ? t("rewardPending") : t("rewardRedeemed")}
-                        </p>
-                        {isPending && (
-                          <p className="text-xs text-amber-700 mt-1 flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {t("tapToRedeem")}
-                          </p>
-                        )}
-                      </div>
-                      {isPending && <ChevronRight className="h-5 w-5 text-amber-600 shrink-0" />}
-                    </>
-                  );
+                  const isExpanded = expandedRewardId === reward.id;
 
                   return (
                     <motion.div
@@ -305,19 +314,73 @@ export default function CardView() {
                           })}
                     >
                       {isPending ? (
-                        <Link
-                          href={`/reward/${reward.id}`}
-                          className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 shadow-sm active:scale-[0.98] transition-transform"
-                        >
-                          {inner}
-                        </Link>
+                        <div className="rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 shadow-sm overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedRewardId((id) => (id === reward.id ? null : reward.id))
+                            }
+                            aria-expanded={isExpanded}
+                            className="flex w-full items-center gap-3 p-4 text-left active:scale-[0.98] transition-transform"
+                          >
+                            <div className="h-10 w-10 rounded-full flex items-center justify-center shrink-0 shadow-sm bg-amber-400">
+                              <Gift className="h-5 w-5 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-foreground truncate">{reward.rewardDescription}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {new Date(reward.createdAt).toLocaleDateString(dateLocale, {
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                                {" · "}
+                                {t("rewardPending")}
+                              </p>
+                              {!isExpanded && (
+                                <p className="text-xs text-amber-700 mt-1 flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {t("tapToRedeem")}
+                                </p>
+                              )}
+                            </div>
+                            <ChevronDown
+                              className={cn(
+                                "h-5 w-5 text-amber-600 shrink-0 transition-transform",
+                                isExpanded && "rotate-180",
+                              )}
+                            />
+                          </button>
+                          {isExpanded && (
+                            <div className="px-4 pb-4">
+                              <PendingRewardQr
+                                rewardId={reward.id}
+                                description={reward.rewardDescription}
+                                primaryColor={card.primaryColor}
+                                compact
+                                liteChrome={liteChrome}
+                                requirePhoneVerification
+                                clientPhone={card.clientPhone}
+                              />
+                            </div>
+                          )}
+                        </div>
                       ) : (
-                        <Link
-                          href={`/reward/${reward.id}`}
-                          className="flex items-center gap-3 p-4 rounded-2xl bg-white/80 backdrop-blur border border-white/60 shadow-sm active:scale-[0.98] transition-transform"
-                        >
-                          {inner}
-                        </Link>
+                        <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/80 backdrop-blur border border-white/60 shadow-sm cursor-default">
+                          <div className="h-10 w-10 rounded-full flex items-center justify-center shrink-0 shadow-sm bg-emerald-100">
+                            <CheckCircle className="h-5 w-5 text-emerald-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-foreground truncate">{reward.rewardDescription}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {new Date(reward.redeemedAt ?? reward.createdAt).toLocaleDateString(dateLocale, {
+                                month: "short",
+                                day: "numeric",
+                              })}
+                              {" · "}
+                              {t("rewardRedeemed")}
+                            </p>
+                          </div>
+                        </div>
                       )}
                     </motion.div>
                   );
@@ -333,7 +396,8 @@ export default function CardView() {
                           animate: { opacity: 1, y: 0 },
                           transition: { delay: (rewards.length + i) * 0.05 },
                         })}
-                    className="flex items-center gap-3 p-4 rounded-2xl bg-white/60 backdrop-blur border border-dashed border-gray-300"
+                    className="flex items-center gap-3 p-4 rounded-2xl bg-white/50 border border-dashed border-gray-300 cursor-default"
+                    aria-hidden
                   >
                     <div className="h-10 w-10 rounded-full flex items-center justify-center shrink-0 bg-gray-100 border border-gray-200">
                       <Gift className="h-5 w-5 text-gray-400" />
@@ -351,7 +415,8 @@ export default function CardView() {
                     {...(liteChrome
                       ? {}
                       : { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 } })}
-                    className="flex items-center gap-3 p-4 rounded-2xl bg-white/60 backdrop-blur border border-dashed border-gray-300"
+                    className="flex items-center gap-3 p-4 rounded-2xl bg-white/50 border border-dashed border-gray-300 cursor-default"
+                    aria-hidden
                   >
                     <div className="h-10 w-10 rounded-full flex items-center justify-center shrink-0 bg-gray-100 border border-gray-200">
                       <Gift className="h-5 w-5 text-gray-400" />

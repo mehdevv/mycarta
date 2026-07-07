@@ -1,12 +1,13 @@
 import { useLocation } from "wouter";
 import { Button, Card } from "@heroui/react";
 import { useWorkerTodayScans } from "@/api";
-import { QrCode, UserCircle, Star } from "lucide-react";
+import { QrCode, Star } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { motion } from "framer-motion";
 import BrandLogo from "@/components/brand/mascot";
 import { fadeUp } from "@/lib/motion";
 import { useShopBranding } from "@/hooks/use-branding";
+import { setWorkerScannerMode } from "@/lib/worker-scanner-mode";
 
 export default function WorkerHome() {
   const { user } = useAuth();
@@ -50,9 +51,22 @@ export default function WorkerHome() {
           size="lg"
           fullWidth
           className="h-24 text-xl rounded-2xl flex flex-col gap-2"
-          onPress={() => navigate("/scan")}
+          onPress={() => {
+            setWorkerScannerMode(true);
+            navigate("/scan");
+          }}
         >
           <QrCode className="h-8 w-8" />
+          Start Scanner Mode
+        </Button>
+
+        <Button
+          size="lg"
+          variant="secondary"
+          fullWidth
+          className="h-14 text-lg rounded-2xl"
+          onPress={() => navigate("/scan")}
+        >
           Scan Customer Card
         </Button>
 
@@ -64,17 +78,6 @@ export default function WorkerHome() {
           onPress={() => navigate("/history")}
         >
           View Today&apos;s History
-        </Button>
-
-        <Button
-          size="lg"
-          variant="secondary"
-          fullWidth
-          className="h-14 text-lg rounded-2xl"
-          onPress={() => navigate("/my-qr")}
-        >
-          <UserCircle className="h-5 w-5 mr-2" />
-          Show My QR Code
         </Button>
       </div>
     </motion.div>

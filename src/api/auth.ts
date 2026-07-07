@@ -97,6 +97,15 @@ export function useLogin() {
   });
 }
 
+async function establishWorkerSession(result: { accessToken: string; refreshToken: string }) {
+  const { error } = await supabaseWorker.auth.setSession({
+    access_token: result.accessToken,
+    refresh_token: result.refreshToken,
+  });
+  if (error) throw error;
+  return { accessToken: result.accessToken };
+}
+
 export function useLoginWorker() {
   return useMutation({
     mutationFn: async ({
@@ -108,14 +117,23 @@ export function useLoginWorker() {
         accessToken: string;
         refreshToken: string;
       }>("login-worker", data);
+      return establishWorkerSession(result);
+    },
+  });
+}
 
-      const { error } = await supabaseWorker.auth.setSession({
-        access_token: result.accessToken,
-        refresh_token: result.refreshToken,
-      });
-      if (error) throw error;
-
-      return { accessToken: result.accessToken };
+export function useLoginWorkerQr() {
+  return useMutation({
+    mutationFn: async ({
+      data,
+    }: {
+      data: { tenantSlug: string; workerQrToken: string };
+    }) => {
+      const result = await invokePublicFunction<{
+        accessToken: string;
+        refreshToken: string;
+      }>("login-worker", data);
+      return establishWorkerSession(result);
     },
   });
 }

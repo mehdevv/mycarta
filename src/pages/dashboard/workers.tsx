@@ -32,6 +32,7 @@ import { getListWorkersQueryKey } from "@/api";
 import { QRCodeSVG } from "qrcode.react";
 import { useCurrentTenant } from "@/lib/tenant-context";
 import { tenantEmployeeLink } from "@/lib/links";
+import { tenantEmployeeQrLoginLink } from "@/lib/worker-qr-login";
 
 const workerSchema = z.object({
   fullName: z.string().min(2, "Le nom doit contenir au moins 2 caractères."),
@@ -372,8 +373,17 @@ export default function Workers() {
           </DialogHeader>
           {qrWorker && (
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-              <QRCodeSVG value={qrWorker.workerQrToken} size={256} level="H" />
+              <QRCodeSVG
+                value={slug ? tenantEmployeeQrLoginLink(slug, qrWorker.workerQrToken) : qrWorker.workerQrToken}
+                size={256}
+                level="H"
+              />
             </div>
+          )}
+          {qrWorker && slug && (
+            <p className="text-xs text-muted-foreground mt-3 text-center break-all px-2">
+              {tenantEmployeeQrLoginLink(slug, qrWorker.workerQrToken)}
+            </p>
           )}
           <Button variant="outline" className="mt-4 w-full" onClick={() => setQrWorkerId(null)}>
             Fermer

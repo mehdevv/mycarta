@@ -39,6 +39,9 @@ type CardTemplateBodyProps = {
   compact?: boolean;
   animated?: boolean;
   showWatermark?: boolean;
+  scanLimitActive?: boolean;
+  scanLimitCountdown?: string;
+  scanLimitLabel?: string;
 };
 
 function ProgressBar({
@@ -101,15 +104,31 @@ function QrBlock({
   qrSize,
   className,
   animated,
+  scanLimitActive,
+  scanLimitCountdown,
+  scanLimitLabel,
 }: {
   qrValue: string;
   qrSize: number;
   className?: string;
   animated?: boolean;
+  scanLimitActive?: boolean;
+  scanLimitCountdown?: string;
+  scanLimitLabel?: string;
 }) {
   const inner = (
-    <div className={`card-tpl-qr-box ${className ?? ""}`}>
-      <QRCodeSVG value={qrValue} size={qrSize} level={animated ? "H" : "M"} fgColor="#111" />
+    <div className={`card-tpl-qr-box relative ${className ?? ""}`}>
+      <div className={scanLimitActive ? "blur-md scale-[0.98] opacity-60 pointer-events-none select-none" : undefined}>
+        <QRCodeSVG value={qrValue} size={qrSize} level={animated ? "H" : "M"} fgColor="#111" />
+      </div>
+      {scanLimitActive && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/90 backdrop-blur-md px-3 text-center">
+          <p className="text-xs font-medium text-muted-foreground leading-snug">{scanLimitLabel}</p>
+          <p className="text-2xl font-bold tabular-nums mt-1.5 text-foreground tracking-tight">
+            {scanLimitCountdown}
+          </p>
+        </div>
+      )}
     </div>
   );
 
@@ -174,6 +193,9 @@ export default function CardTemplateBody({
   compact = false,
   animated = false,
   showWatermark = false,
+  scanLimitActive = false,
+  scanLimitCountdown,
+  scanLimitLabel,
 }: CardTemplateBodyProps) {
   const showStamps = stampsEnabled ?? (rewardMode === "stamps" || rewardMode === "both");
   const showSpend = spendEnabled ?? (rewardMode === "spend" || rewardMode === "both");
@@ -305,7 +327,14 @@ export default function CardTemplateBody({
 
       <div className={`card-tpl-inner relative ${isSplit ? "card-tpl-inner--split" : ""}`}>
         <div className="card-tpl-qr-wrap">
-          <QrBlock qrValue={qrValue} qrSize={size} animated={animated} />
+          <QrBlock
+            qrValue={qrValue}
+            qrSize={size}
+            animated={animated}
+            scanLimitActive={scanLimitActive}
+            scanLimitCountdown={scanLimitCountdown}
+            scanLimitLabel={scanLimitLabel}
+          />
         </div>
 
         <DetailsPanel template={template} primaryColor={primaryColor}>

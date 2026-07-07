@@ -1,9 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useLocation, useRoute } from "wouter";
-import { useLoginWorker, useGetTenantBySlug } from "@/api";
+import { useLoginWorker, useLoginWorkerQr, useGetTenantBySlug } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,9 @@ import AuthShell from "@/components/auth/auth-shell";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { useShopBranding } from "@/hooks/use-branding";
-import { rememberWorkerTenantSlug } from "@/lib/scoped-routes";
+import { employeeLoginPath, rememberWorkerTenantSlug } from "@/lib/scoped-routes";
 import { setActiveAuthSlot } from "@/lib/auth-slots";
+import { clearWorkerQrFromLocation, readWorkerQrTokenFromLocation } from "@/lib/worker-qr-login";
 import { Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
@@ -27,10 +28,14 @@ export default function EmployeeLogin() {
   const { toast } = useToast();
   const { login, logoutWorker, isWorkerAuthenticated, workerUser, isWorkerLoading } = useAuth();
   const loginMutation = useLoginWorker();
+  const loginQrMutation = useLoginWorkerQr();
   const { data: tenantMeta, isLoading: tenantLoading } = useGetTenantBySlug(tenantSlug || undefined);
   const branding = useShopBranding(tenantSlug || undefined);
+  const [qrLoginState, setQrLoginState] = useState<"idle" | "pending" | "failed">("idle");
+  const qrAttemptedRef = useRef(false);
 
   const tenantId = (tenantMeta?.id as string) ?? undefined;
+  const qrToken = readWorkerQrTokenFromLocation();
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -57,9 +62,32 @@ export default function EmployeeLogin() {
         });
         return;
       }
+      clearWorkerQrFromLocation(tenantSlug);
       setLocation("~/worker");
     }
-  }, [isWorkerAuthenticated, workerUser, tenantId, logoutWorker, toast, setLocation]);
+  }, [isWorkerAuthenticated, workerUser, tenantId, logoutWorker, toast, setLocation, tenantSlug]);
+
+  useEffect(() => {
+    if (!qrToken || !tenantSlug || !tenantId || isWorkerAuthenticated || qrAttemptedRef.current) return;
+    qrAttemptedRef.current = true;
+    setQrLoginState("pending");
+
+    void (async () => {
+      try {
+        await loginQrMutation.mutateAsync({
+          data: { tenantSlug, workerQrToken: qrToken },
+        });
+        setActiveAuthSlot("worker");
+        login("worker");
+        toast({ title: "Connexion réussie" });
+      } catch (error: unknown) {
+        setQrLoginState("failed");
+        const message = error instanceof Error ? error.message : "QR de connexion invalide";
+        toast({ title: "Connexion échouée", description: message, variant: "destructive" });
+        clearWorkerQrFromLocation(tenantSlug);
+      }
+    })();
+  }, [qrToken, tenantSlug, tenantId, isWorkerAuthenticated, loginQrMutation, login, toast]);
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     if (!tenantSlug || !tenantId) {
@@ -104,10 +132,15 @@ export default function EmployeeLogin() {
     );
   }
 
-  if (isWorkerAuthenticated) {
+  if (isWorkerAuthenticated || isWorkerLoading || qrLoginState === "pending") {
     return (
       <div className="min-h-screen bg-muted flex items-center justify-center p-4">
-        <p className="text-muted-foreground">Chargement…</p>
+        <div className="text-center space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
+          <p className="text-muted-foreground text-sm">
+            {qrLoginState === "pending" ? "Connexion via QR…" : "Chargement…"}
+          </p>
+        </div>
       </div>
     );
   }
@@ -124,6 +157,11 @@ export default function EmployeeLogin() {
       logoUrl={branding.logoUrl}
       primaryColor={branding.primaryColor}
     >
+      {qrLoginState === "failed" && (
+        <p className="text-sm text-muted-foreground text-center mb-4">
+          Le QR n&apos;a pas fonctionné. Connectez-vous avec votre nom et mot de passe.
+        </p>
+      )}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField

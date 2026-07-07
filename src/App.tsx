@@ -65,7 +65,6 @@ import { INTEGRATIONS_LOCKED } from "@/lib/integration-tutorials";
 import WorkerHome from "@/pages/worker/index";
 import WorkerScan from "@/pages/worker/scan";
 import WorkerHistory from "@/pages/worker/history";
-import WorkerMyQr from "@/pages/worker/my-qr";
 
 import RepLayout from "@/components/layout/rep-layout";
 import RepPipelinePage from "@/pages/rep/pipeline";
@@ -425,9 +424,6 @@ function Router() {
               </Route>
               <Route path="/history">
                 <WorkerProtectedRoute component={WorkerHistory} />
-              </Route>
-              <Route path="/my-qr">
-                <WorkerProtectedRoute component={WorkerMyQr} />
               </Route>
               <Route path="/">
                 <WorkerProtectedRoute component={WorkerHome} />
