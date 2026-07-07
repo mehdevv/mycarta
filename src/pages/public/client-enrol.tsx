@@ -15,6 +15,7 @@ import { isCardCode, normalizeCardCode } from "@/lib/card-code";
 import { ArrowRight, Hash, Loader2, Mail, Smartphone, Sparkles } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { useClientI18n } from "@/hooks/use-client-i18n";
+import { useLiteClientChrome } from "@/hooks/use-lite-client-chrome";
 import { resolveBusinessLogo } from "@/hooks/use-branding";
 import { useRoute } from "wouter";
 import { clientCardPath, rememberClientTenantSlug } from "@/lib/scoped-routes";
@@ -37,7 +38,8 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
   const tenantSlug = slugProp ?? params?.slug ?? "";
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { t, isLoading: langLoading } = useClientI18n();
+  const { t } = useClientI18n(tenantSlug || undefined);
+  const liteChrome = useLiteClientChrome();
   const { data: settings, isLoading: settingsLoading } = useGetSettings(tenantSlug || undefined);
   const { data: tenantMeta, isLoading: tenantMetaLoading } = useGetTenantBySlug(tenantSlug || undefined);
   const enrolClient = useEnrolClient();
@@ -105,9 +107,9 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
     setLocation(`~${clientCardPath(tenantSlug, code)}`);
   };
 
-  if (!tenantSlug && !langLoading) {
+  if (!tenantSlug) {
     return (
-      <ClientShell>
+      <ClientShell lite>
         <div className="flex min-h-[100dvh] items-center justify-center p-4 text-center text-muted-foreground">
           Commerce introuvable. Vérifiez le lien QR.
         </div>
@@ -115,15 +117,16 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
     );
   }
 
-  const settingsPending = settingsLoading && !businessLogo;
-  const tenantPending = tenantMetaLoading && !businessLogo;
+  const settingsPending = settingsLoading && !settings && !tenantMeta;
+  const tenantPending = tenantMetaLoading && !tenantMeta && !settings;
 
-  if (langLoading || settingsPending || tenantPending) {
+  if (settingsPending || tenantPending) {
     return (
       <ClientLoading
         logoUrl={businessLogo}
         businessName={settings?.businessName ?? (tenantMeta?.businessName as string) ?? (tenantMeta?.name as string)}
-        primaryColor={settings?.primaryColor}
+        primaryColor={settings?.primaryColor ?? (tenantMeta?.primaryColor as string)}
+        lite={liteChrome}
       />
     );
   }
@@ -154,16 +157,17 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
   const enrolMeta = buildTenantClientMeta(shopName, tenantSlug, businessLogo);
 
   return (
-    <ClientShell primaryColor={primary} secondaryColor={secondary}>
+    <ClientShell primaryColor={primary} secondaryColor={secondary} lite={liteChrome}>
       <PageMeta {...enrolMeta} />
       <div className="flex min-h-[100dvh] flex-col items-center justify-center p-4 py-8">
-        <ClientCard className="overflow-hidden w-full">
+        <ClientCard className="overflow-hidden w-full" lite={liteChrome}>
           <div className="p-6 pb-4 text-center border-b border-border/50">
             <BrandLogo
               role="client"
               size="md"
               className="mx-auto mb-3"
-              float
+              float={!liteChrome}
+              animate={!liteChrome}
               logoUrl={businessLogo}
               alt={settings?.businessName}
               primaryColor={primary}
@@ -247,7 +251,7 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
                     )}
                   />
                 )}
-                <motion.div {...tapScale()}>
+                {liteChrome ? (
                   <Button
                     type="submit"
                     className="w-full h-14 text-base rounded-2xl font-semibold shadow-md"
@@ -266,7 +270,28 @@ export default function ClientEnrol({ tenantSlug: slugProp }: ClientEnrolProps =
                       </>
                     )}
                   </Button>
-                </motion.div>
+                ) : (
+                  <motion.div {...tapScale()}>
+                    <Button
+                      type="submit"
+                      className="w-full h-14 text-base rounded-2xl font-semibold shadow-md"
+                      style={{ backgroundColor: primary }}
+                      disabled={enrolClient.isPending}
+                    >
+                      {enrolClient.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          {t("creatingCard")}
+                        </>
+                      ) : (
+                        <>
+                          {t("createMyCard")}
+                          <ArrowRight className="ml-2 h-5 w-5" />
+                        </>
+                      )}
+                    </Button>
+                  </motion.div>
+                )}
               </form>
             </Form>
 

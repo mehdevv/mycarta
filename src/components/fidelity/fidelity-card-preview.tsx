@@ -5,6 +5,7 @@ import CardTemplateBody from "@/components/fidelity/card-template-body";
 import { normalizeAssetUrl } from "@/hooks/use-branding";
 import { cardReveal, headerItem, headerStagger } from "@/lib/motion";
 import type { StampMilestone } from "@/lib/stamp-milestones";
+import { withGrandPrizeOnFinalStamp } from "@/lib/stamp-milestones";
 import { spendProgressPercent, spendRemainingDzd } from "@/lib/spend-rewards";
 import { formatDzd } from "@/lib/pricing";
 
@@ -48,12 +49,18 @@ export default function FidelityCardPreview({
   showWatermark = false,
 }: FidelityCardPreviewProps) {
   const cardBg = showCustomBg ? normalizeAssetUrl(cardTemplateUrl) : null;
+  const displayMilestones =
+    stampsEnabled && rewardValue.trim()
+      ? withGrandPrizeOnFinalStamp(milestones, stampThreshold, rewardValue)
+      : milestones;
   const stampProgress = Math.min(100, (currentStamps / stampThreshold) * 100);
   const spendProgress = spendProgressPercent(currentCycleSpendDzd, spendThresholdDzd);
-  const nextMilestone = milestones.find((m) => m.position > currentStamps);
+  const nextMilestone = displayMilestones.find((m) => m.position > currentStamps);
   const stampHint = nextMilestone
     ? currentStamps === nextMilestone.position - 1
-      ? `1 tampon de plus pour : ${nextMilestone.label}`
+      ? nextMilestone.position === stampThreshold
+        ? `Dernière visite ! Récompense : ${nextMilestone.label}`
+        : `1 tampon de plus pour : ${nextMilestone.label}`
       : `${nextMilestone.position - currentStamps} tampon(s) avant : ${nextMilestone.label}`
     : null;
   const spendHint = spendEnabled
@@ -124,7 +131,7 @@ export default function FidelityCardPreview({
                   currentStamps={currentStamps}
                   spendThresholdDzd={spendThresholdDzd}
                   currentCycleSpendDzd={currentCycleSpendDzd}
-                  milestones={milestones}
+                  milestones={displayMilestones}
                   progress={stampProgress}
                   spendProgress={spendProgress}
                   hint={stampsEnabled ? stampHint : null}

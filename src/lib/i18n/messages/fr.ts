@@ -38,10 +38,11 @@ export const messages = {
   },
   nav: {
     mainAria: "Navigation principale",
-    features: "Fonctionnalités",
-    howItWorks: "Comment ça marche",
+    features: "Fonctions",
+    howItWorks: "Comment",
     pricing: "Tarifs",
     security: "Sécurité",
+    pulseFidelite: "Pulse Fidélité",
     findShop: "Trouver un commerce",
     freeTrial: "Essai gratuit",
     freeTrialShort: "Essai",
@@ -428,6 +429,18 @@ export const messages = {
         chipLabel: "Guide vidéo",
         chipHint: "Tutoriel complet",
         watchVideo: "Voir le tutoriel vidéo",
+      },
+    },
+    features: {
+      socialLinks: {
+        badge: "Nouveauté",
+        title: "Vos réseaux sociaux sur la carte fidélité",
+        description:
+          "Ajoutez Instagram, Facebook, TikTok, WhatsApp et votre site web. Vos clients les voient en permanence sur leur carte.",
+        point1: "Configurez une fois lors de l'inscription ou dans Carte fidélité → Apparence",
+        point2: "Liens toujours visibles pour vos clients — un clic pour vous suivre",
+        cta: "Configurer mes réseaux",
+        later: "Plus tard",
       },
     },
   },

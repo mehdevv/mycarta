@@ -7,11 +7,19 @@ type LandingSectionLinkProps = {
   sectionId: string;
   className?: string;
   style?: CSSProperties;
+  title?: string;
   children: ReactNode;
   onNavigate?: () => void;
 };
 
-export function LandingSectionLink({ sectionId, className, style, children, onNavigate }: LandingSectionLinkProps) {
+export function LandingSectionLink({
+  sectionId,
+  className,
+  style,
+  title,
+  children,
+  onNavigate,
+}: LandingSectionLinkProps) {
   const [pathname, setLocation] = useLocation();
 
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
@@ -21,7 +29,7 @@ export function LandingSectionLink({ sectionId, className, style, children, onNa
   };
 
   return (
-    <a href={`/#${sectionId}`} className={cn(className)} style={style} onClick={handleClick}>
+    <a href={`/#${sectionId}`} className={cn(className)} style={style} title={title} onClick={handleClick}>
       {children}
     </a>
   );

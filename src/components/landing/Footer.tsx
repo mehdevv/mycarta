@@ -3,7 +3,7 @@ import { Instagram, Mail, Youtube } from "lucide-react";
 import BrandLogo from "@/components/brand/mascot";
 import { usePlatformBranding } from "@/hooks/use-branding";
 import { useLocale } from "@/lib/i18n/locale-context";
-import { LANDING_FOOTER_PRODUCT_LINKS, LANDING_FOOTER_LEGAL_LINKS } from "./nav-links";
+import { LANDING_FOOTER_PRODUCT_LINKS, LANDING_FOOTER_LEGAL_LINKS, LANDING_NAV_PAGE_LINKS } from "./nav-links";
 import { LandingSectionLink } from "./LandingSectionLink";
 import footerCtaImg from "@/assets/1.png";
 
@@ -115,6 +115,17 @@ export function LandingFooter() {
                   >
                     {t(l.labelKey)}
                   </LandingSectionLink>
+                </li>
+              ))}
+              {LANDING_NAV_PAGE_LINKS.map((l) => (
+                <li key={l.href}>
+                  <Link
+                    href={l.href}
+                    className="text-[14px] hover:text-white transition-colors py-0.5 inline-block"
+                    style={{ color: "rgba(255,255,255,0.65)" }}
+                  >
+                    {t(l.labelKey)}
+                  </Link>
                 </li>
               ))}
             </ul>

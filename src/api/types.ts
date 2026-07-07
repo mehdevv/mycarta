@@ -1,3 +1,5 @@
+import type { SocialLinks } from "@/lib/social-links";
+
 export type UserRole = "owner" | "worker" | "super_admin" | "sales_rep" | "affiliate";
 
 export interface User {
@@ -37,6 +39,7 @@ export interface ShopSettings {
   whatsappConfigured?: boolean;
   emailConfigured?: boolean;
   clientLanguage: "fr" | "en" | "ar";
+  socialLinks: SocialLinks;
   updatedAt: string;
 }
 
@@ -117,6 +120,7 @@ export interface ClientCard {
   pendingRewardId?: string | null;
   pendingRewardDescription?: string | null;
   showCartaWatermark?: boolean;
+  socialLinks?: SocialLinks;
   rewards?: ClientCardReward[];
   recentScans?: { scannedAt: string; status: string; stampsAdded: number }[];
 }

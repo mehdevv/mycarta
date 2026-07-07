@@ -11,6 +11,7 @@ export const RESERVED_SLUGS = new Set([
   "enrol",
   "login",
   "platform",
+  "pulse-fidelite",
   "reward",
   "rewards",
   "setup",

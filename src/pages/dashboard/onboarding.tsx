@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,6 +30,8 @@ import { PLATFORM } from "@/lib/platform";
 import { tenantClientLink, tenantEmployeeLink } from "@/lib/links";
 import { uploadTenantAsset } from "@/lib/upload-tenant-asset";
 import { extractBrandColorsFromImage, extractSecondaryColor } from "@/lib/extract-brand-colors";
+import SocialLinksEditor from "@/components/fidelity/social-links-editor";
+import { EMPTY_SOCIAL_LINKS, type SocialLinks } from "@/lib/social-links";
 import {
   enforceCardColorPair,
   validateCardPrimaryColor,
@@ -113,6 +115,7 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [downloadingQr, setDownloadingQr] = useState(false);
+  const [socialLinks, setSocialLinks] = useState<SocialLinks>(EMPTY_SOCIAL_LINKS);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
@@ -127,9 +130,16 @@ export default function OnboardingPage() {
   const qrDisplaySettings = getQrLogoSettings(qrLogoUrl, QR_DISPLAY_SIZE);
   const qrExportSettings = getQrLogoSettings(qrLogoUrl, QR_EXPORT_SIZE);
   const stampThreshold = settings?.stampThreshold ?? 10;
-  const milestones = settings?.stampMilestones ?? [];  const planId = (tenant?.planId ?? "trial") as PlanId;
+  const milestones = settings?.stampMilestones ?? [];
+  const planId = (tenant?.planId ?? "trial") as PlanId;
   const limits = getBrandingLimits(planId);
   const canBanner = limits.canCustomCardBackground;
+
+  useEffect(() => {
+    if (settings?.socialLinks) {
+      setSocialLinks(settings.socialLinks);
+    }
+  }, [settings?.socialLinks]);
 
   const saveBrandingStep = async (useDefaults = false) => {
     if (!settings || !tenant) return;
@@ -173,6 +183,7 @@ export default function OnboardingPage() {
               primaryColor: colors.primary,
               secondaryColor: colors.secondary,
               ...(canBanner ? { cardTemplateUrl: cardBgUrl ?? settings.cardTemplateUrl } : {}),
+              socialLinks,
             },
       });
       if (useDefaults) {
@@ -495,6 +506,14 @@ export default function OnboardingPage() {
                         </button>
                       </div>
                     )}
+                  </div>
+
+                  <div className="rounded-xl border border-[var(--dash-border)] p-4">
+                    <SocialLinksEditor
+                      value={socialLinks}
+                      onChange={setSocialLinks}
+                      compact
+                    />
                   </div>
 
                   <div className="flex flex-col gap-2 sm:flex-row">

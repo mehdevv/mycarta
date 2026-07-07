@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "./card-templates.css";
+@import "./client-card.css";
 @import "./landing.css";
+@import "./pulse-fidelite.css";
 @import "./dashboard.css";
 @import "./platform.css";
 @import "@heroui/styles";

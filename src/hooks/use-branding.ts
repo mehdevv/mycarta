@@ -31,6 +31,7 @@ export function useShopBranding(slug?: string) {
 
   return {
     isLoading,
+    tenantId: settings?.tenantId,
     businessName: settings?.businessName || PLATFORM.name,
     logoUrl: normalizeAssetUrl(settings?.logoUrl),
     cardTemplateUrl: normalizeAssetUrl(settings?.cardTemplateUrl),

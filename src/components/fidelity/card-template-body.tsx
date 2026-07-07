@@ -109,7 +109,7 @@ function QrBlock({
 }) {
   const inner = (
     <div className={`card-tpl-qr-box ${className ?? ""}`}>
-      <QRCodeSVG value={qrValue} size={qrSize} level="H" fgColor="#111" />
+      <QRCodeSVG value={qrValue} size={qrSize} level={animated ? "H" : "M"} fgColor="#111" />
     </div>
   );
 

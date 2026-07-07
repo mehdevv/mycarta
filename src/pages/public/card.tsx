@@ -12,9 +12,13 @@ import ClientShell, { ClientLoading } from "@/components/client/client-shell";
 import BrandLogo from "@/components/brand/mascot";
 import CardTemplateBody from "@/components/fidelity/card-template-body";
 import CardLinkBar from "@/components/client/card-link-bar";
+import CardSocialBar from "@/components/client/card-social-bar";
+import { CLIENT_SOCIAL_SHEET_HEIGHT } from "@/components/client/social-brand-icons";
+import { hasSocialLinks } from "@/lib/social-links";
 import { cardPageUrl, normalizeCardCode } from "@/lib/card-code";
 import { nextMilestoneHintText, spendRewardHintText } from "@/lib/client-i18n";
 import { useClientI18n } from "@/hooks/use-client-i18n";
+import { useLiteClientChrome } from "@/hooks/use-lite-client-chrome";
 import { useShopBranding, normalizeAssetUrl, resolveBusinessLogo } from "@/hooks/use-branding";
 import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
 import { resolveLoyaltyFlags } from "@/lib/loyalty-program";
@@ -22,6 +26,7 @@ import { shouldShowCartaWatermark } from "@/lib/trial-watermark";
 import { rememberClientTenantSlug, clientEnrolPath, getClientTenantSlug } from "@/lib/scoped-routes";
 import PageMeta from "@/components/seo/page-meta";
 import { absoluteUrl, buildTenantCardMeta } from "@/lib/seo";
+import { cn } from "@/lib/utils";
 import CartaCardWatermark, { useCartaWatermarkDismissed } from "@/components/fidelity/carta-card-watermark";
 
 export default function CardView() {
@@ -36,13 +41,13 @@ export default function CardView() {
   const watermarkDismissed = useCartaWatermarkDismissed(cardSlug);
 
   const { data: tenantMeta, isLoading: tenantMetaLoading } = useGetTenantBySlug(tenantSlug || undefined);
-  const tenantId = (tenantMeta?.id as string) ?? undefined;
 
   useEffect(() => {
     if (tenantSlug) rememberClientTenantSlug(tenantSlug);
   }, [tenantSlug]);
 
-  const { t, lang } = useClientI18n();
+  const { t, lang } = useClientI18n(tenantSlug || cardSlug || undefined);
+  const liteChrome = useLiteClientChrome();
   const branding = useShopBranding(tenantSlug || undefined);
 
   const businessLogo = resolveBusinessLogo(
@@ -53,14 +58,19 @@ export default function CardView() {
     branding.businessName ||
     String(tenantMeta?.businessName ?? tenantMeta?.name ?? "");
 
+  const tenantId =
+    (tenantMeta?.id as string | undefined) ??
+    branding.tenantId;
+
   const { data: card, isLoading, error } = useGetClientCard(code, {
     query: { enabled: !!code },
     tenantId,
   });
+  const hasSocialBar = hasSocialLinks(card?.socialLinks);
 
   useEffect(() => {
-    if (card?.pendingRewardId) vibrate([30, 50, 30]);
-  }, [card?.pendingRewardId]);
+    if (card?.pendingRewardId && !liteChrome) vibrate([30, 50, 30]);
+  }, [card?.pendingRewardId, liteChrome]);
 
   if (!code) {
     return (
@@ -72,8 +82,8 @@ export default function CardView() {
     );
   }
 
-  const brandingPending = branding.isLoading && !businessLogo;
-  const tenantPending = !!tenantSlug && tenantMetaLoading && !businessLogo;
+  const brandingPending = branding.isLoading && !businessLogo && !card;
+  const tenantPending = !!tenantSlug && tenantMetaLoading && !businessLogo && !card;
 
   if (isLoading || brandingPending || tenantPending) {
     return (
@@ -81,6 +91,7 @@ export default function CardView() {
         logoUrl={businessLogo}
         businessName={businessName}
         primaryColor={branding.primaryColor}
+        lite={liteChrome}
       />
     );
   }
@@ -152,23 +163,34 @@ export default function CardView() {
     tenantMeta?.planId as string | undefined,
   );
   const showWatermarkBar = showWatermark && !watermarkDismissed;
+  const motionProps = liteChrome
+    ? { initial: false as const, animate: undefined }
+    : { variants: fadeUp, initial: "initial" as const, animate: "animate" as const };
 
   return (
-    <ClientShell primaryColor={card.primaryColor} secondaryColor={secondary}>
+    <ClientShell primaryColor={card.primaryColor} secondaryColor={secondary} lite={liteChrome}>
       <PageMeta {...cardMeta} />
       <motion.div
-        className={`flex flex-col min-h-[100dvh] max-w-md mx-auto ${showWatermarkBar ? "pb-28" : "pb-6"}`}
-        variants={fadeUp}
-        initial="initial"
-        animate="animate"
+        className={cn(
+          "flex flex-col min-h-[100dvh] max-w-md mx-auto",
+          hasSocialBar && "client-page--social-sheet",
+          showWatermarkBar && hasSocialBar && "client-page--watermark",
+          !hasSocialBar && showWatermarkBar && "pb-28",
+          !hasSocialBar && !showWatermarkBar && "pb-6",
+        )}
+        style={hasSocialBar ? { ["--client-social-sheet-h" as string]: CLIENT_SOCIAL_SHEET_HEIGHT } : undefined}
+        {...motionProps}
       >
         <motion.header
           className="px-5 pt-4 pb-3 flex items-center justify-between gap-3"
-          variants={headerStagger}
-          initial="initial"
-          animate="animate"
+          {...(liteChrome
+            ? {}
+            : { variants: headerStagger, initial: "initial", animate: "animate" })}
         >
-          <motion.div variants={headerItem} className="flex items-center gap-2.5 min-w-0">
+          <motion.div
+            variants={liteChrome ? undefined : headerItem}
+            className="flex items-center gap-2.5 min-w-0"
+          >
             <BrandLogo
               role="client"
               size="xs"
@@ -190,7 +212,10 @@ export default function CardView() {
               </p>
             </div>
           </motion.div>
-          <motion.div variants={headerItem} className="shrink-0">
+          <motion.div
+            variants={liteChrome ? undefined : headerItem}
+            className="shrink-0"
+          >
             <CardLinkBar code={card.cardCode} primaryColor={card.primaryColor} />
           </motion.div>
         </motion.header>
@@ -198,9 +223,9 @@ export default function CardView() {
         <div className="px-5 flex-1">
           <motion.div
             ref={cardRef}
-            variants={cardReveal}
-            initial="initial"
-            animate="animate"
+            {...(liteChrome
+              ? {}
+              : { variants: cardReveal, initial: "initial", animate: "animate" })}
           >
             <CardTemplateBody
               cardDesignId={cardDesignId}
@@ -222,12 +247,12 @@ export default function CardView() {
               progressLabel={t("progress")}
               spendProgressLabel={t("spendProgress")}
               footerHint={footerHint}
-              animated
+              animated={!liteChrome}
             />
           </motion.div>
 
           {showRewardsSection && (
-            <motion.div variants={scaleIn} className="mt-6">
+            <motion.div {...(liteChrome ? {} : { variants: scaleIn })} className="mt-6">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 px-1">
                 {t("myRewards")}
               </h3>
@@ -271,9 +296,13 @@ export default function CardView() {
                   return (
                     <motion.div
                       key={reward.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
+                      {...(liteChrome
+                        ? {}
+                        : {
+                            initial: { opacity: 0, y: 8 },
+                            animate: { opacity: 1, y: 0 },
+                            transition: { delay: i * 0.05 },
+                          })}
                     >
                       {isPending ? (
                         <Link
@@ -297,9 +326,13 @@ export default function CardView() {
                   upcomingMilestones.map((milestone, i) => (
                   <motion.div
                     key={`upcoming-${milestone.position}`}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: (rewards.length + i) * 0.05 }}
+                    {...(liteChrome
+                      ? {}
+                      : {
+                          initial: { opacity: 0, y: 8 },
+                          animate: { opacity: 1, y: 0 },
+                          transition: { delay: (rewards.length + i) * 0.05 },
+                        })}
                     className="flex items-center gap-3 p-4 rounded-2xl bg-white/60 backdrop-blur border border-dashed border-gray-300"
                   >
                     <div className="h-10 w-10 rounded-full flex items-center justify-center shrink-0 bg-gray-100 border border-gray-200">
@@ -315,8 +348,9 @@ export default function CardView() {
                 ))}
                 {spendEnabled && card.rewardValue?.trim() && currentSpend < spendThreshold && (
                   <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    {...(liteChrome
+                      ? {}
+                      : { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 } })}
                     className="flex items-center gap-3 p-4 rounded-2xl bg-white/60 backdrop-blur border border-dashed border-gray-300"
                   >
                     <div className="h-10 w-10 rounded-full flex items-center justify-center shrink-0 bg-gray-100 border border-gray-200">
@@ -335,6 +369,7 @@ export default function CardView() {
           )}
         </div>
       </motion.div>
+      <CardSocialBar links={card.socialLinks} />
       {showWatermarkBar && <CartaCardWatermark placement="viewport" tenantSlug={cardSlug} />}
     </ClientShell>
   );

@@ -167,7 +167,11 @@ export function useGetClientCard(
     queryKey: ["client-card", token, options?.tenantId],
     enabled: (options?.query?.enabled ?? true) && !!token,
     refetchOnWindowFocus: true,
-    refetchInterval: 8000,
+    staleTime: 5_000,
+    refetchInterval: () => {
+      if (typeof document !== "undefined" && document.hidden) return false;
+      return 12_000;
+    },
     queryFn: async (): Promise<ClientCard> => {
       const { data, error } = await supabase.rpc("get_client_card_by_token", {
         p_token: token,
@@ -176,31 +180,7 @@ export function useGetClientCard(
       if (error) throw error;
       if (!data) throw new Error("Card not found");
 
-      let card = mapClientCard(data as Record<string, unknown>);
-
-      const { data: rewardsData, error: rewardsError } = await supabase.rpc(
-        "get_client_rewards_by_token",
-        { p_token: token, p_tenant_id: options?.tenantId ?? null },
-      );
-
-      if (!rewardsError && Array.isArray(rewardsData) && rewardsData.length > 0) {
-        const fromRpc = rewardsData
-          .map((item) => mapClientCardReward(item as Record<string, unknown>))
-          .filter((reward) => reward.id);
-
-        const merged = new Map<string, (typeof fromRpc)[0]>();
-        for (const reward of [...fromRpc, ...(card.rewards ?? [])]) {
-          merged.set(reward.id, reward);
-        }
-        card = {
-          ...card,
-          rewards: Array.from(merged.values()).sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-          ),
-        };
-      }
-
-      return card;
+      return mapClientCard(data as Record<string, unknown>);
     },
   });
 }

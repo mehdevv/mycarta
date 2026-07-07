@@ -12,6 +12,7 @@ import CardEditorSidebar, {
 import { clampMilestonesToThreshold } from "@/lib/stamp-milestones";
 import { spendProgressPercent } from "@/lib/spend-rewards";
 import { shouldShowCartaWatermark } from "@/lib/trial-watermark";
+import { consumePulsePlan } from "@/lib/pulse-plan";
 
 export default function CardEditorPage() {
   const { data: settings, isLoading } = useGetSettings();
@@ -22,9 +23,29 @@ export default function CardEditorPage() {
   const [previewStamps, setPreviewStamps] = useState(3);
   const [previewSpendDzd, setPreviewSpendDzd] = useState(3500);
   const [dirty, setDirty] = useState(false);
+  const [pulseApplied, setPulseApplied] = useState(false);
 
   useEffect(() => {
     if (!settings || dirty) return;
+
+    // Plan Pulse en attente (simulateur) : préremplir le programme.
+    const plan = consumePulsePlan();
+    if (plan) {
+      setState({
+        ...defaultCardEditorState(settings),
+        stampsEnabled: plan.stampsEnabled,
+        spendEnabled: plan.spendEnabled,
+        stampThreshold: plan.stampThreshold,
+        spendThresholdDzd: plan.spendThresholdDzd,
+        rewardValue: plan.rewardValue,
+        stampMilestones: clampMilestonesToThreshold(plan.stampMilestones, plan.stampThreshold),
+      });
+      setPreviewStamps(Math.max(1, Math.floor(plan.stampThreshold * 0.5)));
+      setDirty(true);
+      setPulseApplied(true);
+      return;
+    }
+
     setState(defaultCardEditorState(settings));
     setPreviewStamps((prev) => Math.min(prev, settings.stampThreshold ?? 9));
     setPreviewSpendDzd((prev) =>
@@ -58,6 +79,13 @@ export default function CardEditorPage() {
         eyebrow="Éditeur"
         title="Carte fidélité"
       />
+
+      {pulseApplied && (
+        <div className="dash-alert dash-alert--info" role="status">
+          Plan Pulse appliqué : votre programme a été prérempli avec la recommandation du
+          simulateur. Vérifiez les réglages puis enregistrez.
+        </div>
+      )}
 
       <div className="dash-card-editor-layout">
         <div

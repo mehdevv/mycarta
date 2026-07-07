@@ -8,6 +8,7 @@ function toCamel<T extends Record<string, unknown>>(row: T): Record<string, unkn
 }
 
 import { parseStampMilestones } from "@/lib/stamp-milestones";
+import { parseSocialLinks } from "@/lib/social-links";
 import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
 import { resolveLoyaltyFlags } from "@/lib/loyalty-program";
 
@@ -49,6 +50,7 @@ export function mapSettings(row: Record<string, unknown>) {
     whatsappConfigured: Boolean(r.whatsappToken && r.whatsappPhoneId),
     emailConfigured: Boolean(r.emailSender),
     clientLanguage: r.clientLanguage === "en" ? "en" : "fr",
+    socialLinks: parseSocialLinks(r.socialLinks),
     updatedAt: String(r.updatedAt ?? r.createdAt ?? new Date().toISOString()),
   };
 }
@@ -144,6 +146,7 @@ export function mapClientCard(raw: Record<string, unknown>) {
     pendingRewardId: pendingId,
     pendingRewardDescription: pendingDesc,
     showCartaWatermark: Boolean(r.showCartaWatermark),
+    socialLinks: parseSocialLinks(r.socialLinks),
     rewards,
     recentScans: Array.isArray(r.recentScans)
       ? (r.recentScans as Record<string, unknown>[]).map((scan) => {

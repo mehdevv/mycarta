@@ -131,6 +131,8 @@ export function useGetTenantBySlug(slug?: string) {
   return useQuery({
     queryKey: ["tenant-slug", slug],
     enabled: !!slug,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_tenant_by_slug", { p_slug: slug });
       if (error) throw error;

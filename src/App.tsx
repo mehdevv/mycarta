@@ -15,6 +15,7 @@ import { DashboardTourProvider } from "@/lib/dashboard-tour-context";
 
 import LandingPage from "@/pages/marketing/landing";
 import PricingRedirect from "@/pages/marketing/pricing-redirect";
+import PulseFidelitePage from "@/pages/marketing/pulse-fidelite";
 import SignupRedirect from "@/pages/public/signup-redirect";
 import FindShop from "@/pages/public/find-shop";
 import OnboardingRouteGate from "@/components/dashboard/onboarding-route-gate";
@@ -245,6 +246,7 @@ function Router() {
       <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/tarifs" component={PricingRedirect} />
+      <Route path="/pulse-fidelite" component={PulseFidelitePage} />
       <Route path="/signup" component={SignupRedirect} />
       <Route path="/legal/:slug" component={LegalPage} />
 

@@ -18,12 +18,14 @@ import {
 import { PLATFORM } from "@/lib/platform";
 import { tenantClientLink } from "@/lib/links";
 import StampMilestonesEditor from "@/components/fidelity/stamp-milestones-editor";
+import SocialLinksEditor from "@/components/fidelity/social-links-editor";
 import AiCardDesigner from "@/components/fidelity/ai-card-designer";
 import CardTemplatePicker from "@/components/fidelity/card-template-picker";
 import type { StampMilestone } from "@/lib/stamp-milestones";
 import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
 import { clampMilestonesToThreshold } from "@/lib/stamp-milestones";
 import { formatDzd } from "@/lib/pricing";
+import { EMPTY_SOCIAL_LINKS, hasSocialLinks, type SocialLinks } from "@/lib/social-links";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -82,6 +84,7 @@ export type CardEditorState = {
   stampMilestones: StampMilestone[];
   trackProducts: boolean;
   collectClientEmail: boolean;
+  socialLinks: SocialLinks;
 };
 
 type EditorDialog = "appearance" | "program" | "rewards" | "enrollment" | null;
@@ -265,6 +268,9 @@ export default function CardEditorSidebar({
         <span className="flex items-center gap-1">
           <ColorSwatch color={state.primaryColor} />
           <ColorSwatch color={state.secondaryColor} />
+          {hasSocialLinks(state.socialLinks) ? (
+            <span className="text-[10px] font-medium text-[var(--dash-text-secondary)]">+ réseaux</span>
+          ) : null}
         </span>
       ),
     },
@@ -600,6 +606,11 @@ export default function CardEditorSidebar({
                 </div>
               </div>
             </div>
+            <SocialLinksEditor
+              value={state.socialLinks}
+              onChange={(socialLinks) => patch({ socialLinks })}
+              compact
+            />
             <button
               type="button"
               className="dash-btn-primary"
@@ -994,6 +1005,7 @@ export function defaultCardEditorState(settings?: {
   stampMilestones?: StampMilestone[];
   trackProducts?: boolean;
   collectClientEmail?: boolean;
+  socialLinks?: SocialLinks;
 }): CardEditorState {
   return {
     businessName: settings?.businessName ?? "",
@@ -1011,5 +1023,6 @@ export function defaultCardEditorState(settings?: {
     stampMilestones: settings?.stampMilestones ?? [],
     trackProducts: settings?.trackProducts ?? true,
     collectClientEmail: settings?.collectClientEmail === true,
+    socialLinks: settings?.socialLinks ?? EMPTY_SOCIAL_LINKS,
   };
 }

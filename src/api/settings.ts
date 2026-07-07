@@ -35,9 +35,13 @@ async function fetchSettingsByTenantId(tenantId: string): Promise<ShopSettings> 
   return mapSettings(data);
 }
 
-export function useGetSettings(slug?: string) {
+export function useGetSettings(slug?: string, options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   return useQuery({
     queryKey: getGetSettingsQueryKey(slug),
+    enabled,
+    staleTime: slug ? 5 * 60_000 : 30_000,
+    gcTime: 10 * 60_000,
     queryFn: async (): Promise<ShopSettings> => {
       if (slug) {
         const { data: tenantData, error: tenantError } = await supabase.rpc("get_tenant_by_slug", {

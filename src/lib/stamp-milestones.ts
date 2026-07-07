@@ -34,6 +34,23 @@ export function getMilestoneAt(
   return milestones.find((m) => m.position === position);
 }
 
+/**
+ * Toujours afficher la grande récompense sur le dernier tampon de la carte
+ * (position === stampThreshold) pour motiver le client à finir.
+ */
+export function withGrandPrizeOnFinalStamp(
+  milestones: StampMilestone[],
+  stampThreshold: number,
+  finalRewardLabel: string,
+): StampMilestone[] {
+  const label = finalRewardLabel.trim();
+  if (!label || stampThreshold < 1) return milestones;
+  const withoutFinal = milestones.filter((m) => m.position !== stampThreshold);
+  return [...withoutFinal, { position: stampThreshold, label }].sort(
+    (a, b) => a.position - b.position,
+  );
+}
+
 export function resolveStampReward(
   newCycleStamps: number,
   threshold: number,

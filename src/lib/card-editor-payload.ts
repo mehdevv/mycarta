@@ -2,6 +2,7 @@ import type { BrandingLimits } from "@/lib/branding-limits";
 import { enforceCardColorPair } from "@/lib/card-color-contrast";
 import { DEFAULT_CARD_DESIGN_ID } from "@/lib/card-templates";
 import type { StampMilestone } from "@/lib/stamp-milestones";
+import { sanitizeSocialLinks, type SocialLinks } from "@/lib/social-links";
 
 export type CardEditorFields = {
   businessName: string;
@@ -19,6 +20,7 @@ export type CardEditorFields = {
   stampMilestones: StampMilestone[];
   trackProducts: boolean;
   collectClientEmail: boolean;
+  socialLinks: SocialLinks;
 };
 
 export function cardEditorToShopSettings(
@@ -51,6 +53,7 @@ export function cardEditorToShopSettings(
       state.stampsEnabled ? state.stampMilestones.filter((m) => m.label.trim()) : [],
     trackProducts: state.stampsEnabled ? state.trackProducts : false,
     collectClientEmail: state.collectClientEmail,
+    socialLinks: sanitizeSocialLinks(state.socialLinks),
   };
 }
 

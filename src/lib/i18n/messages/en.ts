@@ -44,6 +44,7 @@ export const messages: Messages = {
     howItWorks: "How it works",
     pricing: "Pricing",
     security: "Security",
+    pulseFidelite: "Pulse Loyalty",
     findShop: "Find a shop",
     freeTrial: "Free trial",
     freeTrialShort: "Trial",
@@ -427,6 +428,18 @@ export const messages: Messages = {
         chipLabel: "Video guide",
         chipHint: "Full tutorial",
         watchVideo: "Watch video tutorial",
+      },
+    },
+    features: {
+      socialLinks: {
+        badge: "New",
+        title: "Social links on your loyalty card",
+        description:
+          "Add Instagram, Facebook, TikTok, WhatsApp, and your website. Clients see them permanently on their card.",
+        point1: "Set up once during onboarding or in Loyalty card → Appearance",
+        point2: "Always visible for clients — one tap to follow you",
+        cta: "Set up my socials",
+        later: "Later",
       },
     },
   },

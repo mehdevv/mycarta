@@ -5,6 +5,11 @@ export const LANDING_NAV_LINKS = [
   { sectionId: "security", labelKey: "nav.security" },
 ] as const;
 
+/** Standalone marketing pages (not in-page anchors). */
+export const LANDING_NAV_PAGE_LINKS = [
+  { href: "/pulse-fidelite", labelKey: "nav.pulseFidelite" },
+] as const;
+
 export const LANDING_FOOTER_PRODUCT_LINKS = LANDING_NAV_LINKS;
 
 export const LANDING_FOOTER_LEGAL_LINKS = [

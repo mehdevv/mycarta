@@ -44,6 +44,7 @@ export const messages: Messages = {
     howItWorks: "كيف يعمل",
     pricing: "الأسعار",
     security: "الأمان",
+    pulseFidelite: "Pulse Fidélité",
     findShop: "البحث عن متجر",
     freeTrial: "تجربة مجانية",
     freeTrialShort: "تجربة",
@@ -427,6 +428,18 @@ export const messages: Messages = {
         chipLabel: "دليل فيديو",
         chipHint: "الدليل الكامل",
         watchVideo: "مشاهدة دليل الفيديو",
+      },
+    },
+    features: {
+      socialLinks: {
+        badge: "جديد",
+        title: "روابط التواصل على بطاقة الولاء",
+        description:
+          "أضف إنستغرام، فيسبوك، تيك توك، واتساب وموقعك. يراها عملاؤك دائماً على بطاقتهم.",
+        point1: "إعداد مرة واحدة عند التسجيل أو من بطاقة الولاء ← المظهر",
+        point2: "ظاهرة دائماً للعملاء — نقرة واحدة لمتابعتك",
+        cta: "إعداد روابط التواصل",
+        later: "لاحقاً",
       },
     },
   },

@@ -38,6 +38,7 @@ import { LanguageSwitcher } from "@/components/ui/language-switcher";
 
 import DashboardTour from "@/components/dashboard/dashboard-tour";
 import { DashboardVideoTutorialModal } from "@/components/dashboard/dashboard-video-tutorial";
+import SocialLinksFeatureModal from "@/components/dashboard/social-links-feature-modal";
 import DashboardTopbarSearch from "@/components/dashboard/dashboard-topbar-search";
 import { useDashboardTour } from "@/lib/dashboard-tour-context";
 
@@ -307,6 +308,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
       <DashboardTour />
       <DashboardVideoTutorialModal />
+      <SocialLinksFeatureModal />
     </div>
   );
 }

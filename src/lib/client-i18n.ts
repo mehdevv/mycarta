@@ -1,5 +1,6 @@
 import { useMemo, useEffect } from "react";
 import { useGetSettings } from "@/api";
+import { getClientTenantSlug } from "@/lib/scoped-routes";
 
 export type ClientLanguage = "fr" | "en" | "ar";
 
@@ -76,6 +77,7 @@ const messages = {
     waitingForStaff: "Waiting for staff to scan…",
     rewardAlreadyRedeemed: "Already redeemed",
     rewardUpcoming: "Stamp {position}",
+    followUs: "Follow us",
   },
   fr: {
     loading: "Chargement…",
@@ -149,6 +151,7 @@ const messages = {
     waitingForStaff: "En attente du scan par le personnel…",
     rewardAlreadyRedeemed: "Déjà utilisée",
     rewardUpcoming: "Stamp {position}",
+    followUs: "Suivez-nous",
   },
   ar: {
     loading: "جاري التحميل…",
@@ -218,6 +221,7 @@ const messages = {
     waitingForStaff: "في انتظار مسح الموظف…",
     rewardAlreadyRedeemed: "مُستخدَمة مسبقاً",
     rewardUpcoming: "ختم {position}",
+    followUs: "تابعونا",
   },
 } as const;
 
@@ -242,8 +246,9 @@ export function clientT(lang: ClientLanguage) {
   };
 }
 
-export function useClientI18n() {
-  const { data: settings, isLoading } = useGetSettings();
+export function useClientI18n(tenantSlug?: string) {
+  const slug = tenantSlug || getClientTenantSlug() || undefined;
+  const { data: settings, isLoading } = useGetSettings(slug, { enabled: !!slug });
   const lang = normalizeClientLanguage(settings?.clientLanguage);
   const t = useMemo(() => clientT(lang), [lang]);
 

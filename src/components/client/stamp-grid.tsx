@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { CheckCircle2, Gift, Star } from "lucide-react";
+import { CheckCircle2, Gift, Star, Trophy } from "lucide-react";
 import { getMilestoneAt, type StampMilestone } from "@/lib/stamp-milestones";
 import { getCardTemplate, stampGridClassName, type CardTemplate } from "@/lib/card-templates";
 import { staggerContainer, staggerItem, reducedMotion } from "@/lib/motion";
@@ -24,6 +24,17 @@ const nextFlash = (primaryColor: string) =>
           "0 2px 8px rgba(0,0,0,0.08)",
         ],
       };
+
+const grandPrizeFlash = reducedMotion
+  ? {}
+  : {
+      scale: [1, 1.08, 1],
+      boxShadow: [
+        "0 2px 8px rgba(124,58,237,0.25)",
+        "0 0 18px rgba(124,58,237,0.55), 0 0 0 4px rgba(124,58,237,0.2)",
+        "0 2px 8px rgba(124,58,237,0.25)",
+      ],
+    };
 
 const prizeFlash = reducedMotion
   ? {}
@@ -67,33 +78,46 @@ export default function ClientStampGrid({
         const position = i + 1;
         const filled = i < currentStamps;
         const prize = getMilestoneAt(milestones, position);
+        const isGrandPrize = position === stampThreshold && !!prize;
         const isNext = !filled && position === currentStamps + 1;
         const isPrize = !!prize && !filled && !isNext;
         const isJustFilled = filled && position === currentStamps;
 
-        const pulseAnimate = isNext
-          ? nextFlash(primaryColor)
-          : isPrize
-            ? prizeFlash
-            : isJustFilled
-              ? fillPop
-              : {};
+        const pulseAnimate = isGrandPrize
+          ? grandPrizeFlash
+          : isNext
+            ? nextFlash(primaryColor)
+            : isPrize
+              ? prizeFlash
+              : isJustFilled
+                ? fillPop
+                : {};
 
-        const pulseTransition = isNext || isPrize
-          ? { duration: 1.6, repeat: Infinity, ease: [0.45, 0, 0.55, 1] as const }
-          : { type: "spring" as const, stiffness: 480, damping: 16 };
+        const pulseTransition =
+          isGrandPrize || isNext || isPrize
+            ? { duration: 1.6, repeat: Infinity, ease: [0.45, 0, 0.55, 1] as const }
+            : { type: "spring" as const, stiffness: 480, damping: 16 };
 
         const shapeStyle: React.CSSProperties = {
-          borderColor: filled ? primaryColor : prize ? "#F59E0B" : "#D1D5DB",
+          borderColor: filled
+            ? primaryColor
+            : isGrandPrize
+              ? "#7C3AED"
+              : prize
+                ? "#F59E0B"
+                : "#D1D5DB",
           backgroundColor: filled
             ? `${primaryColor}18`
-            : prize
-              ? "#FEF3C7"
-              : template.stampStyle === "neon"
-                ? "rgba(15,23,42,0.5)"
-                : "rgba(255,255,255,0.95)",
+            : isGrandPrize
+              ? "#EDE9FE"
+              : prize
+                ? "#FEF3C7"
+                : template.stampStyle === "neon"
+                  ? "rgba(15,23,42,0.5)"
+                  : "rgba(255,255,255,0.95)",
           color: template.stampStyle === "neon" ? primaryColor : undefined,
           ...(isNext ? { boxShadow: `0 0 0 3px ${primaryColor}40` } : {}),
+          ...(isGrandPrize ? { boxShadow: "0 0 0 2px rgba(124,58,237,0.35)" } : {}),
         };
 
         return (
@@ -103,7 +127,13 @@ export default function ClientStampGrid({
             className={`flex flex-col items-center gap-1 ${compact ? "min-h-[3.5rem]" : "min-h-[4.5rem]"}`}
           >
             <motion.div
-              className={`stamp-cell-shape ${isPrize ? "ring-1 ring-amber-300/60" : ""}`}
+              className={`stamp-cell-shape ${
+                isGrandPrize
+                  ? "ring-2 ring-violet-400/70"
+                  : isPrize
+                    ? "ring-1 ring-amber-300/60"
+                    : ""
+              }`}
               style={shapeStyle}
               animate={pulseAnimate}
               transition={pulseTransition}
@@ -132,11 +162,17 @@ export default function ClientStampGrid({
                   animate={
                     reducedMotion || isNext
                       ? {}
-                      : { rotate: [0, -8, 8, 0], scale: [1, 1.1, 1] }
+                      : { rotate: isGrandPrize ? [0, -5, 5, 0] : [0, -8, 8, 0], scale: [1, 1.1, 1] }
                   }
                   transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  <Gift className={compact ? "w-4 h-4 text-amber-600" : "w-5 h-5 text-amber-600"} />
+                  {isGrandPrize ? (
+                    <Trophy
+                      className={compact ? "w-4 h-4 text-violet-600" : "w-5 h-5 text-violet-600"}
+                    />
+                  ) : (
+                    <Gift className={compact ? "w-4 h-4 text-amber-600" : "w-5 h-5 text-amber-600"} />
+                  )}
                 </motion.div>
               ) : template.stampStyle === "star" ? (
                 <Star className={compact ? "w-4 h-4 text-gray-400" : "w-5 h-5 text-gray-400"} />
@@ -155,7 +191,9 @@ export default function ClientStampGrid({
             </motion.div>
             {prize && template.showMilestoneLabels && (
               <motion.span
-                className="text-[10px] text-center leading-tight font-semibold text-amber-800 line-clamp-2 w-full"
+                className={`text-[10px] text-center leading-tight font-semibold line-clamp-2 w-full ${
+                  isGrandPrize ? "text-violet-800" : "text-amber-800"
+                }`}
                 animate={
                   isPrize && !reducedMotion
                     ? { opacity: [0.75, 1, 0.75] }
