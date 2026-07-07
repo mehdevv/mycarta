@@ -7,6 +7,7 @@ export const FRAUD_REASON_LABELS: Record<string, string> = {
   self_scan: "Employee cannot scan their own card",
   too_soon: "Same employee scanned too recently — wait 10 seconds",
   visit_in_progress: "Visit still in progress — complete the current scan first",
+  expired_pending: "Previous visit was cancelled",
   // Legacy block reasons (no longer enforced)
   scan_cooldown: "Card scanned too recently (legacy)",
   rapid_scan: "Customer scanned again too soon (legacy)",

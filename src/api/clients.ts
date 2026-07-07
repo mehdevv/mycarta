@@ -167,10 +167,10 @@ export function useGetClientCard(
     queryKey: ["client-card", token, options?.tenantId],
     enabled: (options?.query?.enabled ?? true) && !!token,
     refetchOnWindowFocus: true,
-    staleTime: 5_000,
+    staleTime: 2_000,
     refetchInterval: () => {
       if (typeof document !== "undefined" && document.hidden) return false;
-      return 12_000;
+      return 3_000;
     },
     queryFn: async (): Promise<ClientCard> => {
       const { data, error } = await supabase.rpc("get_client_card_by_token", {

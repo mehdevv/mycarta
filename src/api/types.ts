@@ -133,6 +133,8 @@ export interface ClientCard {
   maxScansPerDay?: number;
   scansToday?: number;
   scansResetAt?: string | null;
+  lastScanAt?: string | null;
+  openPendingAt?: string | null;
 }
 
 export interface ClientCardReward {

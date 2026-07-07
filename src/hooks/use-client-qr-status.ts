@@ -1,13 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ClientCard } from "@/api/types";
 import { resolveClientQrBlockingStatus } from "@/lib/client-qr-status";
-import { scanCooldownSecondsLeftFromRecent } from "@/lib/scan-cooldown";
+import { resolveCooldownSecondsLeft } from "@/lib/scan-cooldown";
 import { useDailyScanLimit } from "@/hooks/use-daily-scan-limit";
 
 type TranslateFn = (key: string, vars?: Record<string, string | number>) => string;
 
 export function useClientQrStatus(
-  card: Pick<ClientCard, "scansToday" | "maxScansPerDay" | "scansResetAt" | "recentScans"> | null | undefined,
+  card:
+    | Pick<
+        ClientCard,
+        | "scansToday"
+        | "maxScansPerDay"
+        | "scansResetAt"
+        | "recentScans"
+        | "lastScanAt"
+        | "openPendingAt"
+      >
+    | null
+    | undefined,
   t: TranslateFn,
   onLimitExpired?: () => void,
 ) {
@@ -34,6 +45,8 @@ export function useClientQrStatus(
         scansResetAt: card?.scansResetAt,
         scansToday: scanLimit.scansToday,
         maxScansPerDay: scanLimit.maxScansPerDay,
+        lastScanAt: card?.lastScanAt,
+        openPendingAt: card?.openPendingAt,
         recentScans: card?.recentScans,
         now,
         t,
@@ -45,6 +58,8 @@ export function useClientQrStatus(
       card?.scansResetAt,
       scanLimit.scansToday,
       scanLimit.maxScansPerDay,
+      card?.lastScanAt,
+      card?.openPendingAt,
       card?.recentScans,
       now,
       t,
@@ -52,8 +67,13 @@ export function useClientQrStatus(
   );
 
   const cooldownSecondsLeft = useMemo(
-    () => scanCooldownSecondsLeftFromRecent(card?.recentScans, now),
-    [card?.recentScans, now],
+    () =>
+      resolveCooldownSecondsLeft({
+        lastScanAt: card?.lastScanAt,
+        recentScans: card?.recentScans,
+        now,
+      }),
+    [card?.lastScanAt, card?.recentScans, now],
   );
   const prevCooldownRef = useRef(cooldownSecondsLeft);
 

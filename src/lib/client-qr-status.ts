@@ -1,5 +1,5 @@
 import { formatScanLimitCountdown } from "@/lib/scan-limit-countdown";
-import { scanCooldownSecondsLeftFromRecent } from "@/lib/scan-cooldown";
+import { resolveCooldownSecondsLeft } from "@/lib/scan-cooldown";
 
 export type ClientQrBlockingVariant = "limit" | "cooldown" | "pending";
 
@@ -36,7 +36,8 @@ function secondsUntil(iso: string | null | undefined, now: number): number {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - now) / 1000));
 }
 
-function pendingCountdown(ageMs: number): string {
+function pendingCountdownFromIso(openPendingAt: string, now: number): string {
+  const ageMs = now - new Date(openPendingAt).getTime();
   const remaining = Math.max(0, PENDING_MAX_AGE_MS - ageMs);
   return formatScanLimitCountdown(Math.ceil(remaining / 1000));
 }
@@ -52,6 +53,12 @@ function dailyLimitCountdown(args: {
   return formatScanLimitCountdown(secondsUntil(resetIso, args.now));
 }
 
+function isActivePending(openPendingAt: string | null | undefined, now: number): boolean {
+  if (!openPendingAt) return false;
+  const ageMs = now - new Date(openPendingAt).getTime();
+  return Number.isFinite(ageMs) && ageMs >= 0 && ageMs < PENDING_MAX_AGE_MS;
+}
+
 export function resolveClientQrBlockingStatus(args: {
   scanLimitActive: boolean;
   scanLimitCountdown: string;
@@ -59,6 +66,8 @@ export function resolveClientQrBlockingStatus(args: {
   scansResetAt?: string | null;
   scansToday: number;
   maxScansPerDay: number;
+  lastScanAt?: string | null;
+  openPendingAt?: string | null;
   recentScans?: ClientRecentScan[];
   now: number;
   t: TranslateFn;
@@ -70,15 +79,12 @@ export function resolveClientQrBlockingStatus(args: {
     scansResetAt,
     scansToday,
     maxScansPerDay,
+    lastScanAt,
+    openPendingAt,
     recentScans,
     now,
     t,
   } = args;
-
-  const latest = recentScans?.[0];
-  const latestAge = latest?.scannedAt
-    ? now - new Date(latest.scannedAt).getTime()
-    : Number.POSITIVE_INFINITY;
 
   const dailyLimitReached =
     scanLimitActive ||
@@ -99,22 +105,36 @@ export function resolveClientQrBlockingStatus(args: {
     };
   }
 
+  if (isActivePending(openPendingAt, now)) {
+    return {
+      variant: "pending",
+      reason: t("qrStatusPending"),
+      hint: t("qrStatusPendingHint"),
+      countdownLabel: t("qrCooldownPending"),
+      countdown: pendingCountdownFromIso(openPendingAt!, now),
+    };
+  }
+
+  const latestPending = recentScans?.find((scan) => scan.status === "pending");
   if (
-    latest?.status === "pending" &&
-    Number.isFinite(latestAge) &&
-    latestAge >= 0 &&
-    latestAge < PENDING_MAX_AGE_MS
+    latestPending?.scannedAt &&
+    isActivePending(latestPending.scannedAt, now)
   ) {
     return {
       variant: "pending",
       reason: t("qrStatusPending"),
       hint: t("qrStatusPendingHint"),
       countdownLabel: t("qrCooldownPending"),
-      countdown: pendingCountdown(latestAge),
+      countdown: pendingCountdownFromIso(latestPending.scannedAt, now),
     };
   }
 
-  const cooldownSec = scanCooldownSecondsLeftFromRecent(recentScans, now);
+  const cooldownSec = resolveCooldownSecondsLeft({
+    lastScanAt,
+    recentScans,
+    now,
+  });
+
   if (cooldownSec > 0) {
     return {
       variant: "cooldown",

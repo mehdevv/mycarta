@@ -140,7 +140,7 @@ function QrBlock({
         <QRCodeSVG value={qrValue} size={qrSize} level={animated ? "H" : "M"} fgColor="#111" />
       </div>
       {qrBlockingStatus && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/75 backdrop-blur-sm px-3 py-4 text-center shadow-inner">
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl bg-white/85 backdrop-blur-sm px-3 py-4 text-center shadow-inner">
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-full mb-2 ${overlayIconBg}`}
           >

@@ -15,6 +15,7 @@ import CardTemplateBody from "@/components/fidelity/card-template-body";
 import CardLinkBar from "@/components/client/card-link-bar";
 import CardSocialBar from "@/components/client/card-social-bar";
 import PendingRewardQr from "@/components/client/pending-reward-qr";
+import ClientCardBlockingBanner from "@/components/client/client-card-blocking-banner";
 import { CLIENT_SOCIAL_SHEET_HEIGHT } from "@/components/client/social-brand-icons";
 import { hasSocialLinks } from "@/lib/social-links";
 import { cardPageUrl, normalizeCardCode } from "@/lib/card-code";
@@ -255,6 +256,12 @@ export default function CardView() {
         </motion.header>
 
         <div className="px-5 flex-1">
+          {qrStatusState.blockingStatus && (
+            <ClientCardBlockingBanner
+              status={qrStatusState.blockingStatus}
+              animated={!liteChrome}
+            />
+          )}
           <motion.div
             {...(liteChrome
               ? {}

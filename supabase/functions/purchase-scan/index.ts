@@ -340,10 +340,11 @@ Deno.serve(async (req) => {
       return jsonResponse(blockedResponse("daily_limit", client, settings));
     }
 
+    const SAME_WORKER_COOLDOWN_MS = 10_000;
     const PENDING_STALE_MS = 30 * 60 * 1000;
     const { data: openPending } = await admin
       .from("scan_logs")
-      .select("scanned_at")
+      .select("id, scanned_at, worker_id")
       .eq("client_id", client.id)
       .eq("status", "pending")
       .order("scanned_at", { ascending: false })
@@ -353,11 +354,18 @@ Deno.serve(async (req) => {
     if (openPending?.scanned_at) {
       const pendingAge = Date.now() - new Date(openPending.scanned_at as string).getTime();
       if (pendingAge >= 0 && pendingAge < PENDING_STALE_MS) {
-        return jsonResponse(blockedResponse("visit_in_progress", client, settings));
+        const sameWorkerActiveVisit =
+          openPending.worker_id === worker.id && pendingAge < SAME_WORKER_COOLDOWN_MS;
+        if (sameWorkerActiveVisit) {
+          return jsonResponse(blockedResponse("visit_in_progress", client, settings));
+        }
+        await admin
+          .from("scan_logs")
+          .update({ status: "blocked_fraud", block_reason: "expired_pending" })
+          .eq("id", openPending.id);
       }
     }
 
-    const SAME_WORKER_COOLDOWN_MS = 10_000;
     const { data: lastApprovedScan } = await admin
       .from("scan_logs")
       .select("scanned_at")

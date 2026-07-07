@@ -164,6 +164,8 @@ export function mapClientCard(raw: Record<string, unknown>) {
     maxScansPerDay: Number(r.maxScansPerDay ?? 2),
     scansToday: Number(r.scansToday ?? 0),
     scansResetAt: (r.scansResetAt as string | null) ?? null,
+    lastScanAt: (r.lastScanAt as string | null) ?? null,
+    openPendingAt: (r.openPendingAt as string | null) ?? null,
   };
 }
 

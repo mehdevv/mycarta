@@ -334,11 +334,13 @@ export default function WorkerScan() {
         if (r.needsProducts && r.pendingScanId) {
           setProductQtys({});
           setStep("products");
+          processingRef.current = false;
           return;
         }
         if (r.needsAmount && r.pendingScanId) {
           setAmountDzd("");
           setStep("amount");
+          processingRef.current = false;
           return;
         }
 
@@ -354,6 +356,8 @@ export default function WorkerScan() {
         });
         processingRef.current = false;
         if (!scannerModeRef.current) setStep("scan");
+      } finally {
+        processingRef.current = false;
       }
     },
     [stopScanner, finishRedeemResult, finishPurchaseResult],
