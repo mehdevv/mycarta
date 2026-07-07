@@ -254,6 +254,7 @@ Deno.serve(async (req) => {
       const newCycleStamps = Number(client.current_cycle_stamps ?? 0) + 1;
       const stampOutcome = resolveStampReward(newCycleStamps, threshold, milestones, fallbackReward);
 
+      const approvedAt = new Date().toISOString();
       await admin
         .from("scan_logs")
         .update({
@@ -261,6 +262,7 @@ Deno.serve(async (req) => {
           stamps_added: 1,
           reward_triggered: stampOutcome.rewardTriggered,
           status: "approved",
+          scanned_at: approvedAt,
         })
         .eq("id", pendingScanId);
 
@@ -367,10 +369,12 @@ Deno.serve(async (req) => {
       totalRewardsDelta += 1;
     }
 
+    const approvedAt = new Date().toISOString();
     await admin
       .from("scan_logs")
       .update({
         status: "approved",
+        scanned_at: approvedAt,
         pending_amount: false,
         pending_stamps: false,
         purchase_amount_dzd: purchaseAmount,

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ClientCard } from "@/api/types";
 import { resolveClientQrBlockingStatus } from "@/lib/client-qr-status";
+import { scanCooldownSecondsLeftFromRecent } from "@/lib/scan-cooldown";
 import { useDailyScanLimit } from "@/hooks/use-daily-scan-limit";
 
 type TranslateFn = (key: string, vars?: Record<string, string | number>) => string;
@@ -49,6 +50,19 @@ export function useClientQrStatus(
       t,
     ],
   );
+
+  const cooldownSecondsLeft = useMemo(
+    () => scanCooldownSecondsLeftFromRecent(card?.recentScans, now),
+    [card?.recentScans, now],
+  );
+  const prevCooldownRef = useRef(cooldownSecondsLeft);
+
+  useEffect(() => {
+    if (prevCooldownRef.current > 0 && cooldownSecondsLeft === 0) {
+      onLimitExpired?.();
+    }
+    prevCooldownRef.current = cooldownSecondsLeft;
+  }, [cooldownSecondsLeft, onLimitExpired]);
 
   return { blockingStatus, scanLimit };
 }

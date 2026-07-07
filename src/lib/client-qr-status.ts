@@ -1,5 +1,5 @@
 import { formatScanLimitCountdown } from "@/lib/scan-limit-countdown";
-import { scanCooldownSecondsLeft } from "@/lib/scan-cooldown";
+import { scanCooldownSecondsLeftFromRecent } from "@/lib/scan-cooldown";
 
 export type ClientQrBlockingVariant = "limit" | "cooldown" | "pending";
 
@@ -82,8 +82,7 @@ export function resolveClientQrBlockingStatus(args: {
 
   const dailyLimitReached =
     scanLimitActive ||
-    (maxScansPerDay > 0 && scansToday >= maxScansPerDay) ||
-    latest?.status === "blocked_limit";
+    (maxScansPerDay > 0 && scansToday >= maxScansPerDay);
 
   if (dailyLimitReached) {
     return {
@@ -115,12 +114,7 @@ export function resolveClientQrBlockingStatus(args: {
     };
   }
 
-  const cooldownSec = scanCooldownSecondsLeft(
-    latest?.scannedAt,
-    latest?.status,
-    latest?.blockReason,
-    now,
-  );
+  const cooldownSec = scanCooldownSecondsLeftFromRecent(recentScans, now);
   if (cooldownSec > 0) {
     return {
       variant: "cooldown",

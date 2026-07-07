@@ -340,19 +340,36 @@ Deno.serve(async (req) => {
       return jsonResponse(blockedResponse("daily_limit", client, settings));
     }
 
-    const SAME_WORKER_COOLDOWN_MS = 10_000;
-    const { data: lastWorkerScan } = await admin
+    const PENDING_STALE_MS = 30 * 60 * 1000;
+    const { data: openPending } = await admin
       .from("scan_logs")
       .select("scanned_at")
       .eq("client_id", client.id)
-      .eq("worker_id", worker.id)
-      .in("status", ["approved", "pending"])
+      .eq("status", "pending")
       .order("scanned_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (lastWorkerScan?.scanned_at) {
-      const elapsed = Date.now() - new Date(lastWorkerScan.scanned_at as string).getTime();
+    if (openPending?.scanned_at) {
+      const pendingAge = Date.now() - new Date(openPending.scanned_at as string).getTime();
+      if (pendingAge >= 0 && pendingAge < PENDING_STALE_MS) {
+        return jsonResponse(blockedResponse("visit_in_progress", client, settings));
+      }
+    }
+
+    const SAME_WORKER_COOLDOWN_MS = 10_000;
+    const { data: lastApprovedScan } = await admin
+      .from("scan_logs")
+      .select("scanned_at")
+      .eq("client_id", client.id)
+      .eq("worker_id", worker.id)
+      .eq("status", "approved")
+      .order("scanned_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastApprovedScan?.scanned_at) {
+      const elapsed = Date.now() - new Date(lastApprovedScan.scanned_at as string).getTime();
       if (elapsed < SAME_WORKER_COOLDOWN_MS) {
         await admin.from("scan_logs").insert({
           tenant_id: tenantId,
